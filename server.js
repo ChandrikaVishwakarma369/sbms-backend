@@ -1,23 +1,11 @@
-import express from "express";
-import mongoose from "mongoose";
+import connectDB from "./src/config/db.js";
 import dotenv from "dotenv";
-import cors from "cors";
+import app from "./src/app.js";
 
 dotenv.config();
 
-const app = express();
-
-app.use(cors());
-app.use(express.json());
-
-// 🔥 MongoDB connect
-mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log("MongoDB Connected ✅"))
-  .catch((err) => console.log("DB Error:", err));
-
-app.get("/", (req, res) => {
-  res.send("SBMS Backend Running....");
-});
+// DB connect
+connectDB();
 
 const PORT = process.env.PORT || 5000;
 
