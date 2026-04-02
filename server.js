@@ -1,14 +1,23 @@
-import connectDB from "./src/config/db.js";
+import express from "express";
 import dotenv from "dotenv";
-import app from "./src/app.js";
+import connectDB from "./config/db.js";
+import authRoutes from "./routes/authRoutes.js";
+import cookieParser from "cookie-parser";
+import cors from "cors";
 
 dotenv.config();
-
-// DB connect
 connectDB();
 
-const PORT = process.env.PORT || 5000;
+const app = express();
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+app.use(express.json());
+app.use(cookieParser());
+
+app.use(cors({
+  origin: "http://localhost:3000",
+  credentials: true,
+}));
+
+app.use("/api/auth", authRoutes);
+
+app.listen(5000, () => console.log("Server running on port 5000"));
