@@ -2,6 +2,7 @@ import express from "express";
 import dotenv from "dotenv";
 import connectDB from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
+import productRoutes from "./routes/productRoutes.js";
 import invoiceRoutes from './routes/invoiceRoutes.js'
 import orderRoutes from "./routes/order.routes.js";
 import cookieParser from "cookie-parser";
@@ -32,6 +33,7 @@ app.use(cors({
 
 // Routes
 app.use("/api/auth", authRoutes);
+app.use("/api/products", productRoutes);
 app.use("/api/invoices", invoiceRoutes); 
 
 app.use("/api/orders", orderRoutes);
