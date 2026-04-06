@@ -15,16 +15,6 @@ export const protect = async (req, res, next) => {
   }
 };
 
-
-// 🔹 ADMIN ONLY
-// export const auth = (req, res, next) => {
-//   if (req.user.role !== "admin") {
-//     return res.status(403).json({ msg: "Admin access only" });
-//   }
-//   next();
-// };
-
-
 export const auth = async (req, res, next) => {
   const token = req.cookies.token;
 
