@@ -4,6 +4,8 @@ import connectDB from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
 import productRoutes from "./routes/productRoutes.js";
 import invoiceRoutes from './routes/invoiceRoutes.js'
+import employeeRoutes from "./routes/employeeRoutes.js";
+import uploadRoutes from "./routes/uploadRoutes.js";
 import orderRoutes from "./routes/order.routes.js";
 import cookieParser from "cookie-parser";
 import cors from "cors";
@@ -31,12 +33,30 @@ app.use(cors({
   allowedHeaders: ["Content-Type", "Authorization"],
 }));
 
-// Routes
+
+
+import path from "path";
+import { fileURLToPath } from "url";
+import fs from "fs";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Ensure uploads folder exists
+const uploadDir = path.join(__dirname, "uploads");
+if (!fs.existsSync(uploadDir)){
+    fs.mkdirSync(uploadDir);
+}
+
+// Static folder for images
+app.use("/uploads", express.static(uploadDir));
+
 app.use("/api/auth", authRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/invoices", invoiceRoutes); 
-
 app.use("/api/orders", orderRoutes);
+app.use("/api/employees", employeeRoutes); // New Employee Logic
+app.use("/api/upload", uploadRoutes); // Real Image Upload Support
 
 // Health Check Endpoint
 app.get("/api/health", (req, res) => {

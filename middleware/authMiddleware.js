@@ -23,3 +23,7 @@ export const adminOnly = (req, res, next) => {
   }
   next();
 };
+
+// Aliases for compatibility
+export const auth = protect;
+export const admin = adminOnly;
