@@ -17,9 +17,34 @@ export const protect = async (req, res, next) => {
 
 
 // 🔹 ADMIN ONLY
-export const adminOnly = (req, res, next) => {
-  if (req.user.role !== "admin") {
-    return res.status(403).json({ msg: "Admin access only" });
+// export const auth = (req, res, next) => {
+//   if (req.user.role !== "admin") {
+//     return res.status(403).json({ msg: "Admin access only" });
+//   }
+//   next();
+// };
+
+
+export const auth = async (req, res, next) => {
+  const token = req.cookies.token;
+
+  if (!token) {
+    return res.status(401).json({ msg: "Not authorized" });
   }
-  next();
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    const user = await User.findById(decoded.id);
+
+    if (!user) {
+      return res.status(401).json({ msg: "User not found" });
+    }
+
+    req.user = user;
+
+    next();
+  } catch (error) {
+    res.status(401).json({ msg: "Token failed" });
+  }
 };
