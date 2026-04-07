@@ -35,6 +35,6 @@ export const adminOnly = (req, res, next) => {
   }
 };
 
-// Aliases for compatibility with different routes
+// Aliases
 export const auth = protect;
 export const admin = adminOnly;
