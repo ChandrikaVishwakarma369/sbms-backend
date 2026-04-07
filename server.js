@@ -12,7 +12,6 @@ import cors from "cors";
 import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
-
 import {
   requestLogger,
   errorHandler
@@ -40,8 +39,8 @@ const __dirname = path.dirname(__filename);
 
 // Ensure uploads folder exists
 const uploadDir = path.join(__dirname, "uploads");
-if (!fs.existsSync(uploadDir)){
-    fs.mkdirSync(uploadDir);
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir);
 }
 
 // Static folder for images
@@ -50,7 +49,7 @@ app.use("/uploads", express.static(uploadDir));
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/products", productRoutes);
-app.use("/api/invoices", invoiceRoutes); 
+app.use("/api/invoices", invoiceRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/employees", employeeRoutes);
 app.use("/api/upload", uploadRoutes);
