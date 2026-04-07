@@ -10,7 +10,7 @@ export const getCustomers = async (req, res) => {
       name: c.name,
       email: c.email,
       phone: c.phone,
-      gst: c.gst,
+      gstNumber: c.gstNumber,
       status: c.status,
     }));
 
@@ -47,7 +47,7 @@ export const getCustomerById = async (req, res) => {
         name: customer.name,
         email: customer.email,
         phone: customer.phone,
-        gst: customer.gst,
+        gstNumber: customer.gstNumber,
         status: customer.status,
       },
     });
@@ -63,7 +63,7 @@ export const getCustomerById = async (req, res) => {
 // ➕ CREATE NEW CUSTOMER
 export const createCustomer = async (req, res) => {
   try {
-    const { name, email, phone, gst } = req.body;
+    const { name, email, phone, gstNumber } = req.body;
 
     // Manual validation
     if (!name || !email || !phone) {
@@ -81,11 +81,21 @@ export const createCustomer = async (req, res) => {
       });
     }
 
+    if (gstNumber) {
+      const gstExists = await Customer.findOne({ gstNumber });
+      if (gstExists) {
+        return res.status(400).json({
+          success: false,
+          message: "GST number already exists",
+        });
+      }
+    }
+
     const customer = await Customer.create({
       name,
       email,
       phone,
-      gst,
+      gstNumber: gstNumber || null,
     });
 
     res.status(201).json({
@@ -96,14 +106,14 @@ export const createCustomer = async (req, res) => {
         name: customer.name,
         email: customer.email,
         phone: customer.phone,
-        gst: customer.gst,
+        gstNumber: customer.gstNumber,
         status: customer.status,
       },
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: "Error creating customer",
+      message: error.code === 11000 ? "GST number already exists" : "Error creating customer",
       error: error.message,
     });
   }
@@ -112,7 +122,7 @@ export const createCustomer = async (req, res) => {
 // ✏️ UPDATE CUSTOMER
 export const updateCustomer = async (req, res) => {
   try {
-    const { name, email, phone, gst, status } = req.body;
+    const { name, email, phone, gstNumber, status } = req.body;
 
     const customer = await Customer.findById(req.params.id);
 
@@ -123,11 +133,22 @@ export const updateCustomer = async (req, res) => {
       });
     }
 
+    // Check for duplicate GST if provided and different from current
+    if (gstNumber && gstNumber !== customer.gstNumber) {
+      const gstExists = await Customer.findOne({ gstNumber, _id: { $ne: req.params.id } });
+      if (gstExists) {
+        return res.status(400).json({
+          success: false,
+          message: "GST number already exists",
+        });
+      }
+    }
+
     // Update fields
     customer.name = name || customer.name;
     customer.email = email || customer.email;
     customer.phone = phone || customer.phone;
-    customer.gst = gst !== undefined ? gst : customer.gst;
+    customer.gstNumber = gstNumber !== undefined ? (gstNumber || null) : customer.gstNumber;
     customer.status = status || customer.status;
 
     const updatedCustomer = await customer.save();
@@ -140,14 +161,14 @@ export const updateCustomer = async (req, res) => {
         name: updatedCustomer.name,
         email: updatedCustomer.email,
         phone: updatedCustomer.phone,
-        gst: updatedCustomer.gst,
+        gstNumber: updatedCustomer.gstNumber,
         status: updatedCustomer.status,
       },
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: "Error updating customer",
+      message: error.code === 11000 ? "GST number already exists" : "Error updating customer",
       error: error.message,
     });
   }
@@ -183,7 +204,7 @@ export const getCustomerStats = async (req, res) => {
   try {
     const totalCustomers = await Customer.countDocuments();
     const activeCustomers = await Customer.countDocuments({ status: "Active" });
-    const customersWithGST = await Customer.countDocuments({ gst: { $ne: "", $exists: true } });
+    const customersWithGST = await Customer.countDocuments({ gstNumber: { $ne: "", $exists: true } });
 
     res.status(200).json({
       success: true,
