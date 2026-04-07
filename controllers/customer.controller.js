@@ -65,7 +65,11 @@ export const createCustomer = async (req, res) => {
   try {
     const { name, email, phone, gstNumber } = req.body;
 
-    // Manual validation
+    // Normalizing GST: Convert empty string or whitespace to undefined
+    // This is the production standard for 'sparse' unique indexes in MongoDB
+    const finalGst = gstNumber?.trim() || undefined;
+
+    // Manual validation for required fields
     if (!name || !email || !phone) {
       return res.status(400).json({
         success: false,
@@ -73,16 +77,18 @@ export const createCustomer = async (req, res) => {
       });
     }
 
-    const customerExists = await Customer.findOne({ email });
-    if (customerExists) {
+    // Check for duplicate Email
+    const emailExists = await Customer.findOne({ email });
+    if (emailExists) {
       return res.status(400).json({
         success: false,
         message: "Customer with this email already exists",
       });
     }
 
-    if (gstNumber) {
-      const gstExists = await Customer.findOne({ gstNumber });
+    // Check for duplicate GST (only if provided)
+    if (finalGst) {
+      const gstExists = await Customer.findOne({ gstNumber: finalGst });
       if (gstExists) {
         return res.status(400).json({
           success: false,
@@ -93,9 +99,9 @@ export const createCustomer = async (req, res) => {
 
     const customer = await Customer.create({
       name,
-      email,
+      email: email.toLowerCase(),
       phone,
-      gstNumber: gstNumber || null,
+      gstNumber: finalGst,
     });
 
     res.status(201).json({
@@ -111,9 +117,16 @@ export const createCustomer = async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(500).json({
+    let message = "Error creating customer";
+    if (error.code === 11000) {
+      // Intelligently identify which field caused the conflict
+      if (error.message.includes("email")) message = "Customer with this email already exists";
+      else if (error.message.includes("gstNumber")) message = "GST number already exists";
+      else message = "Duplicate record found";
+    }
+    res.status(400).json({
       success: false,
-      message: error.code === 11000 ? "GST number already exists" : "Error creating customer",
+      message,
       error: error.message,
     });
   }
@@ -123,7 +136,6 @@ export const createCustomer = async (req, res) => {
 export const updateCustomer = async (req, res) => {
   try {
     const { name, email, phone, gstNumber, status } = req.body;
-
     const customer = await Customer.findById(req.params.id);
 
     if (!customer) {
@@ -133,9 +145,23 @@ export const updateCustomer = async (req, res) => {
       });
     }
 
-    // Check for duplicate GST if provided and different from current
-    if (gstNumber && gstNumber !== customer.gstNumber) {
-      const gstExists = await Customer.findOne({ gstNumber, _id: { $ne: req.params.id } });
+    // Normalizing GST
+    const finalGst = gstNumber?.trim() || undefined;
+
+    // Check for duplicate Email (if changed)
+    if (email && email !== customer.email) {
+      const emailExists = await Customer.findOne({ email, _id: { $ne: req.params.id } });
+      if (emailExists) {
+        return res.status(400).json({
+          success: false,
+          message: "Customer with this email already exists",
+        });
+      }
+    }
+
+    // Check for duplicate GST (if changed and provided)
+    if (finalGst && finalGst !== customer.gstNumber) {
+      const gstExists = await Customer.findOne({ gstNumber: finalGst, _id: { $ne: req.params.id } });
       if (gstExists) {
         return res.status(400).json({
           success: false,
@@ -146,10 +172,10 @@ export const updateCustomer = async (req, res) => {
 
     // Update fields
     customer.name = name || customer.name;
-    customer.email = email || customer.email;
+    customer.email = (email || customer.email).toLowerCase();
     customer.phone = phone || customer.phone;
-    customer.gstNumber = gstNumber !== undefined ? (gstNumber || null) : customer.gstNumber;
     customer.status = status || customer.status;
+    customer.gstNumber = finalGst;
 
     const updatedCustomer = await customer.save();
 
@@ -166,9 +192,15 @@ export const updateCustomer = async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(500).json({
+    let message = "Error updating customer";
+    if (error.code === 11000) {
+      if (error.message.includes("email")) message = "Customer with this email already exists";
+      else if (error.message.includes("gstNumber")) message = "GST number already exists";
+      else message = "Duplicate record found";
+    }
+    res.status(400).json({
       success: false,
-      message: error.code === 11000 ? "GST number already exists" : "Error updating customer",
+      message,
       error: error.message,
     });
   }
