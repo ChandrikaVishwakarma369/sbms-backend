@@ -1,30 +1,16 @@
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 
+// Main token verification middleware
 export const protect = async (req, res, next) => {
   const token = req.cookies.token;
 
-  if (!token) return res.status(401).json({ msg: "Not authorized" });
-
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = await User.findById(decoded.id);
-    next();
-  } catch (error) {
-    res.status(401).json({ msg: "Token failed" });
-  }
-};
-
-export const auth = async (req, res, next) => {
-  const token = req.cookies.token;
-
   if (!token) {
-    return res.status(401).json({ msg: "Not authorized" });
+    return res.status(401).json({ msg: "Not authorized, no token" });
   }
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
     const user = await User.findById(decoded.id);
 
     if (!user) {
@@ -32,9 +18,23 @@ export const auth = async (req, res, next) => {
     }
 
     req.user = user;
-
     next();
   } catch (error) {
-    res.status(401).json({ msg: "Token failed" });
+    console.error("Auth error:", error.message);
+    res.status(401).json({ msg: "Token validation failed" });
   }
 };
+
+// Admin only access check
+export const adminOnly = (req, res, next) => {
+  const role = req.user?.role?.toUpperCase();
+  if (role === "ADMIN") {
+    next();
+  } else {
+    res.status(403).json({ success: false, message: "Access denied: Admins only" });
+  }
+};
+
+// Aliases
+export const auth = protect;
+export const admin = adminOnly;
