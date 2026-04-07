@@ -1,29 +1,40 @@
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 
+// Main token verification middleware
 export const protect = async (req, res, next) => {
   const token = req.cookies.token;
 
-  if (!token) return res.status(401).json({ msg: "Not authorized" });
+  if (!token) {
+    return res.status(401).json({ msg: "Not authorized, no token" });
+  }
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = await User.findById(decoded.id);
+    const user = await User.findById(decoded.id);
+
+    if (!user) {
+      return res.status(401).json({ msg: "User not found" });
+    }
+
+    req.user = user;
     next();
   } catch (error) {
-    res.status(401).json({ msg: "Token failed" });
+    console.error("Auth error:", error.message);
+    res.status(401).json({ msg: "Token validation failed" });
   }
 };
 
-
-// 🔹 ADMIN ONLY
+// Admin only access check
 export const adminOnly = (req, res, next) => {
-  if (req.user.role !== "admin") {
-    return res.status(403).json({ msg: "Admin access only" });
+  const role = req.user?.role?.toUpperCase();
+  if (role === "ADMIN") {
+    next();
+  } else {
+    res.status(403).json({ success: false, message: "Access denied: Admins only" });
   }
-  next();
 };
 
-// Aliases for compatibility
+// Aliases for compatibility with different routes
 export const auth = protect;
 export const admin = adminOnly;
