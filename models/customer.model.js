@@ -2,6 +2,10 @@ import mongoose from "mongoose";
 
 const customerSchema = new mongoose.Schema(
   {
+    _id: {
+      type: String,
+      default: () => new mongoose.Types.ObjectId().toString(),
+    },
     name: {
       type: String,
       required: [true, "Customer name is required"],
