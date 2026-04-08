@@ -3,8 +3,26 @@ import Order from "../models/order.model.js";
 // 📥 GET ALL ORDERS
 export const getAllOrders = async (req, res) => {
   try {
-    const orders = await Order.find().sort({ createdAt: -1 });
-    
+    const { status, page = 1, limit = 100 } = req.query;
+
+    // Build query object
+    const query = {};
+    if (status && status !== "All") {
+      query.status = status;
+    }
+
+    // Calculate pagination values
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    // Fetch total count for pagination metadata
+    const totalOrders = await Order.countDocuments(query);
+
+    // Fetch filtered and paginated orders
+    const orders = await Order.find(query)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
     // Format response to match frontend expectations
     const formattedOrders = orders.map((order) => ({
       id: order._id.toString(),
@@ -21,6 +39,9 @@ export const getAllOrders = async (req, res) => {
     res.status(200).json({
       success: true,
       count: formattedOrders.length,
+      totalOrders,
+      totalPages: Math.ceil(totalOrders / parseInt(limit)),
+      currentPage: parseInt(page),
       data: formattedOrders,
     });
   } catch (error) {
