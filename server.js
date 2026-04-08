@@ -2,12 +2,16 @@ import express from "express";
 import dotenv from "dotenv";
 import connectDB from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
+import productRoutes from "./routes/productRoutes.js";
+import invoiceRoutes from './routes/invoiceRoutes.js';
+import employeeRoutes from "./routes/employeeRoutes.js";
+import uploadRoutes from "./routes/uploadRoutes.js";
 import orderRoutes from "./routes/order.routes.js";
-import customerRoutes from "./routes/customer.route.js";
 import cookieParser from "cookie-parser";
 import cors from "cors";
-
-
+import path from "path";
+import { fileURLToPath } from "url";
+import fs from "fs";
 import {
   requestLogger,
   errorHandler
@@ -21,7 +25,7 @@ const app = express();
 // Middleware
 app.use(express.json());
 app.use(cookieParser());
-app.use(requestLogger); // already correct 👍
+app.use(requestLogger);
 
 app.use(cors({
   origin: "*",
@@ -30,10 +34,25 @@ app.use(cors({
   allowedHeaders: ["Content-Type", "Authorization"],
 }));
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Ensure uploads folder exists
+const uploadDir = path.join(__dirname, "uploads");
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir);
+}
+
+// Static folder for images
+app.use("/uploads", express.static(uploadDir));
+
 // Routes
 app.use("/api/auth", authRoutes);
+app.use("/api/products", productRoutes);
+app.use("/api/invoices", invoiceRoutes);
 app.use("/api/orders", orderRoutes);
-app.use("/api/customers", customerRoutes);
+app.use("/api/employees", employeeRoutes);
+app.use("/api/upload", uploadRoutes);
 
 // Health Check Endpoint
 app.get("/api/health", (req, res) => {
@@ -52,6 +71,7 @@ app.use((req, res) => {
 // Error Handler (must be last)
 app.use(errorHandler);
 
-app.listen(5000, () => {
-  console.log("🚀 Server running on port 5000");
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
 });
