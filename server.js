@@ -7,6 +7,7 @@ import invoiceRoutes from './routes/invoiceRoutes.js';
 import employeeRoutes from "./routes/employeeRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
 import orderRoutes from "./routes/order.routes.js";
+import customerRoutes from "./routes/customer.route.js";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import path from "path";
@@ -53,7 +54,7 @@ app.use("/api/invoices", invoiceRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/employees", employeeRoutes);
 app.use("/api/upload", uploadRoutes);
-
+app.use("/api/customers", customerRoutes);
 // Health Check Endpoint
 app.get("/api/health", (req, res) => {
   res.status(200).json({ success: true, message: "Server is running ✅" });
