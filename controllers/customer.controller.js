@@ -3,7 +3,25 @@ import Customer from "../models/customer.model.js";
 // 📥 GET ALL CUSTOMERS
 export const getCustomers = async (req, res) => {
   try {
-    const customers = await Customer.find().sort({ createdAt: -1 });
+    const { status, gst } = req.query;
+    let query = {};
+
+    // Filter by Status
+    if (status && status !== "All") {
+      query.status = status;
+    }
+
+    // Filter by GST
+    if (gst === "true") {
+      query.gstNumber = { $ne: "", $exists: true };
+    } else if (gst === "false") {
+      query.$or = [
+        { gstNumber: "" },
+        { gstNumber: { $exists: false } }
+      ];
+    }
+
+    const customers = await Customer.find(query).sort({ createdAt: -1 });
 
     const formattedCustomers = customers.map((c) => ({
       id: c._id,
