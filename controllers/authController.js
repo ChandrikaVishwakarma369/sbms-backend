@@ -27,6 +27,7 @@ export const loginUser = async (req, res) => {
     httpOnly: true,
     secure: false, // true in production
     sameSite: "lax",
+    path: "/",
   });
 
   res.json({
