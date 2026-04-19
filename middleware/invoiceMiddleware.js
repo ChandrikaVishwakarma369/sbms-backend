@@ -53,15 +53,7 @@ export const validateInvoiceBody = (req, res, next) => {
 
 
 // ─── 2. ADMIN ONLY GUARD ──────────────────────────────────────────────────────
-export const adminOnly = (req, res, next) => {
-  if (req.user?.role !== "admin") {
-    return res.status(403).json({
-      success: false,
-      message: "Access denied. Only admin can perform this action.",
-    });
-  }
-  next();
-};
+// Removed: using central adminOnly from authMiddleware.js instead.
 
 
 // ─── 3. CAN EDIT INVOICE GUARD ────────────────────────────────────────────────

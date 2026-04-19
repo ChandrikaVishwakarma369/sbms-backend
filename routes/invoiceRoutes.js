@@ -6,9 +6,9 @@ import { protect } from "../middleware/authMiddleware.js";
 // Invoice specific middlewares
 import {
   validateInvoiceBody,
-  adminOnly,
   canEditInvoice,
 } from "../middleware/invoiceMiddleware.js";
+import { adminOnly } from "../middleware/authMiddleware.js";
 
 // Controllers
 import {
