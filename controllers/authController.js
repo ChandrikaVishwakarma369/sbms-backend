@@ -69,6 +69,7 @@ export const logoutUser = (req, res) => {
     httpOnly: true,
     secure: false,
     sameSite: "lax",
+    path: "/",
   });
   res.json({ success: true, message: "Logged out" });
 };
