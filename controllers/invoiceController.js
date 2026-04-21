@@ -1,40 +1,54 @@
 import Invoice from "../models/Invoice.js";
 
-// ─── HELPER: build filter based on role ──────────────────────────────────────
+// ─── COMMON FILTER ────────────────────────────────────────────────────────────
 const buildFilter = (user, extra = {}) => {
   const filter = { ...extra };
-  // Employee sirf apne invoices dekh sakta hai
   if (user.role !== "admin") {
     filter.createdBy = user._id;
   }
   return filter;
 };
 
+// ─── SYNC OVERDUE ─────────────────────────────────────────────────────────────
+const syncOverdueStatuses = async (filter) => {
+  const today = new Date(new Date().toDateString());
 
-// ─── GET ALL INVOICES ─────────────────────────────────────────────────────────
+  await Invoice.updateMany(
+    {
+      ...filter,
+      status: "PENDING",
+      dueDate: { $lt: today, $ne: null },
+    },
+    { $set: { status: "OVERDUE" } },
+  );
+};
+
+// ─── GET ALL ──────────────────────────────────────────────────────────────────
 export const getAllInvoices = async (req, res) => {
   try {
     const { search = "", status = "", page = 1, limit = 10 } = req.query;
 
-    const filter = buildFilter(req.user);
+    const baseFilter = buildFilter(req.user);
+    await syncOverdueStatuses(baseFilter);
 
-    // Status filter
+    const filter = { ...baseFilter };
+
     if (status && status !== "All Status") {
       filter.status = status.toUpperCase();
     }
 
     if (search.trim()) {
       filter.$or = [
-        { invoiceId:    { $regex: search.trim(), $options: "i" } },
+        { invoiceId: { $regex: search.trim(), $options: "i" } },
         { customerName: { $regex: search.trim(), $options: "i" } },
       ];
     }
 
-    const skip  = (Number(page) - 1) * Number(limit);
+    const skip = (Number(page) - 1) * Number(limit);
     const total = await Invoice.countDocuments(filter);
 
     const invoices = await Invoice.find(filter)
-      .populate("createdBy", "name email role") // useful for admin view
+      .populate("createdBy", "name email role")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(Number(limit));
@@ -44,89 +58,144 @@ export const getAllInvoices = async (req, res) => {
       data: invoices,
       pagination: {
         total,
-        page:       Number(page),
-        limit:      Number(limit),
+        page: Number(page),
+        limit: Number(limit),
         totalPages: Math.ceil(total / Number(limit)),
       },
     });
   } catch (error) {
+    console.error("GET ALL ERROR:", error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
-
-// ─── GET STATS (Paid/Pending/Overdue) ────────────────────────────────────────
+// ─── GET STATS (FIXED) ────────────────────────────────────────────────────────
 export const getInvoiceStats = async (req, res) => {
   try {
-    const baseFilter = buildFilter(req.user); // role-aware
+    const baseFilter = buildFilter(req.user);
+    await syncOverdueStatuses(baseFilter);
 
-    // Total Paid — current month only
-    const now          = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const endOfMonth   = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    const invoices = await Invoice.find(baseFilter);
 
-    const [paidResult, pendingResult, overdueResult] = await Promise.all([
-      Invoice.aggregate([
-        { $match: { ...baseFilter, status: "PAID", date: { $gte: startOfMonth, $lte: endOfMonth } } },
-        { $group: { _id: null, total: { $sum: "$total" } } },
-      ]),
-      Invoice.aggregate([
-        { $match: { ...baseFilter, status: "PENDING" } },
-        { $group: { _id: null, total: { $sum: "$total" } } },
-      ]),
-      Invoice.aggregate([
-        { $match: { ...baseFilter, status: "OVERDUE" } },
-        { $group: { _id: null, total: { $sum: "$total" } } },
-      ]),
-    ]);
+    let totalPaid = 0;
+    let totalPending = 0;
+    let totalOverdue = 0;
+
+    invoices.forEach((inv) => {
+      if (inv.status === "PAID") {
+        totalPaid += inv.total;
+      }
+
+      if (inv.status === "PENDING") {
+        totalPending += inv.total;
+      }
+
+      if (inv.status === "OVERDUE") {
+        totalOverdue += inv.total;
+      }
+    });
 
     res.status(200).json({
       success: true,
       data: {
-        totalPaid:    paidResult[0]?.total    || 0,
-        totalPending: pendingResult[0]?.total || 0,
-        totalOverdue: overdueResult[0]?.total || 0,
+        totalPaid,
+        totalPending,
+        totalOverdue,
       },
     });
   } catch (error) {
+    console.error("STATS ERROR:", error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
-
-
-// ─── GET SINGLE INVOICE ───────────────────────────────────────────────────────
-// GET /api/invoices/:id
+// ─── GET SINGLE INVOICE ─────────────────────────────────────────────
 export const getInvoiceById = async (req, res) => {
   try {
     const filter = buildFilter(req.user, { _id: req.params.id });
-    const invoice = await Invoice.findOne(filter).populate("createdBy", "name email role");
 
-    if (!invoice)
+    const invoice = await Invoice.findOne(filter).populate(
+      "createdBy",
+      "name email role",
+    );
+
+    if (!invoice) {
       return res.status(404).json({
         success: false,
         message: "Invoice not found or access denied.",
       });
+    }
 
-    res.status(200).json({ success: true, data: invoice });
+    res.status(200).json({
+      success: true,
+      data: invoice,
+    });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    console.error("GET ONE ERROR:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 
-
-// ─── CREATE INVOICE ───────────────────────────────────────────────────────────
-// POST /api/invoices
+// ─── CREATE INVOICE (FIXED UNIQUE ID) ─────────────────────────────────────────
 export const createInvoice = async (req, res) => {
   try {
-    const { customerName, date, subtotal, gstPercent = 18, status = "PENDING" } = req.body;
-
-    const invoice = await Invoice.create({
+    const {
       customerName,
       date,
-      subtotal:   Number(subtotal),
+      dueDate,
+      items,
+      gstPercent = 18,
+      status = "PENDING",
+      paymentMethod,
+      notes,
+    } = req.body;
+
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Items are required",
+      });
+    }
+
+    // 🔥 UNIQUE ID LOOP (IMPORTANT FIX)
+    let invoiceId;
+    let exists = true;
+
+    while (exists) {
+      const random = Math.floor(100 + Math.random() * 900);
+      invoiceId = `INV${random}`;
+
+      const found = await Invoice.findOne({ invoiceId });
+      if (!found) exists = false;
+    }
+
+    const cleanItems = items.map((item) => ({
+      name: item.name?.trim(),
+      qty: Number(item.qty),
+      rate: Number(item.rate),
+      amount: Math.round(Number(item.qty) * Number(item.rate)),
+    }));
+
+    const subtotal = cleanItems.reduce((sum, item) => sum + item.amount, 0);
+    const gst = Math.round((subtotal * Number(gstPercent)) / 100);
+    const total = subtotal + gst;
+
+    const invoice = await Invoice.create({
+      invoiceId,
+      customerName,
+      date: new Date(date), // 🔥 IMPORTANT FIX
+      dueDate: dueDate ? new Date(dueDate) : null,
+      items: cleanItems,
+      subtotal,
       gstPercent: Number(gstPercent),
-      status:     status.toUpperCase(),
-      createdBy:  req.user._id, // ← logged-in user ka id
+      gst,
+      total,
+      status: status.toUpperCase(),
+      paymentMethod: paymentMethod || null,
+      notes: notes || null,
+      createdBy: req.user._id,
     });
 
     res.status(201).json({
@@ -135,50 +204,66 @@ export const createInvoice = async (req, res) => {
       data: invoice,
     });
   } catch (error) {
-    if (error.name === "ValidationError") {
-      const messages = Object.values(error.errors).map((e) => e.message);
-      return res.status(400).json({ success: false, message: messages[0] });
-    }
-    res.status(500).json({ success: false, message: error.message });
+    console.error("CREATE ERROR:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 
-
 // ─── UPDATE INVOICE ───────────────────────────────────────────────────────────
-// PUT /api/invoices/:id
-// Guard: canEditInvoice middleware handles ownership + status check
 export const updateInvoice = async (req, res) => {
   try {
-    const { customerName, date, subtotal, gstPercent = 18, status } = req.body;
-
-    // Manually recalculate (findByIdAndUpdate skips pre-save hook)
-    const sub   = Number(subtotal);
-    const gstP  = Number(gstPercent);
-    const gst   = Math.round((sub * gstP) / 100);
-    const total = sub + gst;
-
-    // Employee cannot change status (only admin can)
-    const updateData = {
+    const {
       customerName,
       date,
-      subtotal: sub,
-      gstPercent: gstP,
+      dueDate,
+      items,
+      gstPercent = 18,
+      status,
+      paymentMethod,
+      notes,
+    } = req.body;
+
+    const cleanItems = items.map((item) => ({
+      name: item.name?.trim(),
+      qty: Number(item.qty),
+      rate: Number(item.rate),
+      amount: Math.round(Number(item.qty) * Number(item.rate)),
+    }));
+
+    const subtotal = cleanItems.reduce((sum, item) => sum + item.amount, 0);
+    const gst = Math.round((subtotal * Number(gstPercent)) / 100);
+    const total = subtotal + gst;
+
+    const updateData = {
+      customerName,
+      date: new Date(date),
+      dueDate: dueDate ? new Date(dueDate) : null,
+      items: cleanItems,
+      subtotal,
+      gstPercent: Number(gstPercent),
       gst,
       total,
+      paymentMethod: paymentMethod || null,
+      notes: notes || null,
     };
 
-    if (req.user.role === "admin" && status) {
+    if (status) {
       updateData.status = status.toUpperCase();
     }
+    const invoice = await Invoice.findByIdAndUpdate(req.params.id, updateData, {
+      new: true,
+      runValidators: true,
+    });
 
-    const invoice = await Invoice.findByIdAndUpdate(
-      req.params.id,
-      updateData,
-      { new: true, runValidators: true }
-    );
-
-    if (!invoice)
-      return res.status(404).json({ success: false, message: "Invoice not found" });
+    if (!invoice) {
+      return res.status(404).json({
+        success: false,
+        message: "Invoice not found",
+      });
+    }
 
     res.status(200).json({
       success: true,
@@ -186,27 +271,32 @@ export const updateInvoice = async (req, res) => {
       data: invoice,
     });
   } catch (error) {
-    if (error.name === "ValidationError") {
-      const messages = Object.values(error.errors).map((e) => e.message);
-      return res.status(400).json({ success: false, message: messages[0] });
-    }
-    res.status(500).json({ success: false, message: error.message });
+    console.error("UPDATE ERROR:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 
-
-// ─── DELETE INVOICE ───────────────────────────────────────────────────────────
-// DELETE /api/invoices/:id
-// Guard: adminOnly middleware already blocks employees before reaching here
+// ─── DELETE ───────────────────────────────────────────────────────────────────
 export const deleteInvoice = async (req, res) => {
   try {
     const invoice = await Invoice.findByIdAndDelete(req.params.id);
 
-    if (!invoice)
-      return res.status(404).json({ success: false, message: "Invoice not found" });
+    if (!invoice) {
+      return res.status(404).json({
+        success: false,
+        message: "Invoice not found",
+      });
+    }
 
-    res.status(200).json({ success: true, message: "Invoice deleted successfully" });
+    res.status(200).json({
+      success: true,
+      message: "Invoice deleted successfully",
+    });
   } catch (error) {
+    console.error("DELETE ERROR:", error);
     res.status(500).json({ success: false, message: error.message });
   }
 };

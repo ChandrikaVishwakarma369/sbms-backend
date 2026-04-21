@@ -2,39 +2,41 @@ import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 
 export const protect = async (req, res, next) => {
-  const token = req.cookies.token;
+  // ✅ Pehle cookie check, phir Authorization header
+  let token = req.cookies?.token;
 
-  if (!token) return res.status(401).json({ msg: "Not authorized" });
-
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = await User.findById(decoded.id);
-    next();
-  } catch (error) {
-    res.status(401).json({ msg: "Token failed" });
+  if (!token && req.headers.authorization?.startsWith("Bearer ")) {
+    token = req.headers.authorization.split(" ")[1];
   }
-};
-
-export const auth = async (req, res, next) => {
-  const token = req.cookies.token;
 
   if (!token) {
-    return res.status(401).json({ msg: "Not authorized" });
+    return res.status(401).json({ success: false, message: "Not authorized, no token" });
   }
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-    const user = await User.findById(decoded.id);
+    const user = await User.findById(decoded.id).select("-password");
 
     if (!user) {
-      return res.status(401).json({ msg: "User not found" });
+      return res.status(401).json({ success: false, message: "User not found" });
     }
 
     req.user = user;
-
     next();
   } catch (error) {
-    res.status(401).json({ msg: "Token failed" });
+    console.error("Auth error:", error.message);
+    res.status(401).json({ success: false, message: "Token validation failed" });
   }
 };
+
+export const adminOnly = (req, res, next) => {
+  const role = req.user?.role?.toUpperCase();
+  if (role === "ADMIN") {
+    next();
+  } else {
+    res.status(403).json({ success: false, message: "Access denied: Admins only" });
+  }
+};
+
+export const auth = protect;
+export const admin = adminOnly;

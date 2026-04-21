@@ -8,6 +8,7 @@ import {
   getOrderStats,
 } from "../controllers/order.controller.js";
 
+import { protect, adminOnly } from "../middleware/authMiddleware.js";
 import { validateOrderInput } from "../middleware/orderMiddleware.js";
 
 const router = express.Router();
