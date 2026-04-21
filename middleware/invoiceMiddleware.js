@@ -51,20 +51,19 @@ export const validateInvoiceBody = (req, res, next) => {
   next();
 };
 
-
-// ─── 2. ADMIN ONLY GUARD ──────────────────────────────────────────────────────
-// Removed: using central adminOnly from authMiddleware.js instead.
-
-
-// ─── 3. CAN EDIT INVOICE GUARD ────────────────────────────────────────────────
+// ─── 2. CAN EDIT INVOICE GUARD ────────────────────────────────────────────────
 export const canEditInvoice = async (req, res, next) => {
   try {
     if (req.user?.role === "admin") return next();
 
     const invoice = await Invoice.findById(req.params.id);
 
-    if (!invoice)
-      return res.status(404).json({ success: false, message: "Invoice not found" });
+    if (!invoice) {
+      return res.status(404).json({
+        success: false,
+        message: "Invoice not found",
+      });
+    }
 
     if (invoice.createdBy.toString() !== req.user._id.toString()) {
       return res.status(403).json({
@@ -72,16 +71,6 @@ export const canEditInvoice = async (req, res, next) => {
         message: "Access denied. You can only edit your own invoices.",
       });
     }
-
-    // ✅ Employee sirf PENDING edit kar sakta hai
-    // OVERDUE bhi lock hai — agar due date nikal gayi toh admin hi handle karega
-    if (invoice.status !== "PENDING") {
-      return res.status(403).json({
-        success: false,
-        message: `Cannot edit invoice with status "${invoice.status}". Only PENDING invoices can be edited.`,
-      });
-    }
-
     next();
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

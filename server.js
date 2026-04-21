@@ -28,13 +28,21 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(requestLogger);
 
-app.use(cors({
-  origin: "*",
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-}));
+// app.use(cors({
+//   origin: "*",
+//   credentials: true,
+//   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+//   allowedHeaders: ["Content-Type", "Authorization"],
+// }));
 
+// app.use(cors({
+//   origin: "http://localhost:5173", // exact frontend URL
+//   credentials: true,
+// }));
+
+app.use(cors({
+  origin: "*"
+}));
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
