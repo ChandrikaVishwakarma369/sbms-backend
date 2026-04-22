@@ -46,6 +46,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/invoices", invoiceRoutes); 
 app.use("/api/orders", orderRoutes);
+app.use("/api/employees", employeeRoutes);
 
 
 app.get("/api/health", (req, res) => {
