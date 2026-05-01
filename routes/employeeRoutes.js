@@ -19,8 +19,7 @@ const router = express.Router();
 // Routes
 router.get("/", protect, getEmployees);
 router.post("/", protect, allowRoles("ADMIN"), validateEmployeeInput, addEmployee);
-router.put("/:id", protect, allowRoles("ADMIN"), editEmployee);
-router.patch("/:id/status", protect, allowRoles("ADMIN"), changeStatus);
-router.delete("/:id", protect, allowRoles("ADMIN"), removeEmployee);
+router.put("/:id", protect, allowRoles("ADMIN"), updateEmployee);
+router.delete("/:id", protect, allowRoles("ADMIN"), deleteEmployee);
 
-export default router;
+export default router;

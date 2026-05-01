@@ -1,88 +1,83 @@
 import Employee from "../models/Employee.js";
 
-// GET all employees
+// @desc    Get all employees
+// @route   GET /api/employees
+// @access  Private
 export const getEmployees = async (req, res) => {
   try {
-    const employees = await Employee.find().sort({ createdAt: -1 });
-    res.json({ employees });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
+    const { name, role } = req.query;
+    const filter = {};
+    
+    if (name) filter.name = { $regex: name, $options: "i" };
+    if (role) filter.role = role.toUpperCase();
+
+    const employees = await Employee.find(filter).sort({ createdAt: -1 });
+    res.json({ success: true, employees });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// ADD employee
+// @desc    Add new employee
+// @route   POST /api/employees
+// @access  Private/Admin
 export const addEmployee = async (req, res) => {
   try {
     const { name, email, salary, status } = req.body;
 
-    if (!name || !email) {
-      return res.status(400).json({ message: "Name & Email required" });
+    const employeeExists = await Employee.findOne({ email });
+    if (employeeExists) {
+      return res.status(400).json({ success: false, message: "Employee already exists" });
     }
 
-    const employee = new Employee({
+    const employee = await Employee.create({
       name,
       email,
       salary,
-      status,
+      status: status || "ACTIVE",
+      role: "EMPLOYEE", // Default role for safety, as per requirements
     });
 
-    const saved = await employee.save();
-    res.status(201).json({ employee: saved });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(201).json({ success: true, employee });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
   }
 };
 
-// UPDATE employee
+// @desc    Update employee
+// @route   PUT /api/employees/:id
+// @access  Private/Admin
 export const updateEmployee = async (req, res) => {
   try {
-    const newEmployee = await employeeService.createEmployeeRecord(req.body);
-    res.status(201).json({ success: true, employee: newEmployee });
-  } catch (error) {
-    console.error("❌ Add Employee Error:", error);
-
-    // Handle MongoDB Duplicate Key Error (E11000)
-    if (error.code === 11000) {
-      return res.status(409).json({
-        success: false,
-        message: "Email already exists. Please use a unique email.",
-      });
-    }
-
-    // Handle Mongoose Validation Error
-    if (error.name === "ValidationError") {
-      const messages = Object.values(error.errors).map((val) => val.message);
-      return res.status(400).json({
-        success: false,
-        message: messages.join(", "),
-      });
-    }
-
-    next(error);
-  }
-};
-
-// PUT - UPDATE complete details
-export const editEmployee = async (req, res, next) => {
-  try {
-    const updatedEmployee = await employeeService.updateEmployeeRecord(
+    const employee = await Employee.findByIdAndUpdate(
       req.params.id,
       req.body,
-      { new: true }
+      { new: true, runValidators: true }
     );
 
-    res.json({ employee: updated });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
+    if (!employee) {
+      return res.status(404).json({ success: false, message: "Employee not found" });
+    }
+
+    res.json({ success: true, employee });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
   }
 };
 
-// DELETE employee
+// @desc    Delete employee
+// @route   DELETE /api/employees/:id
+// @access  Private/Admin
 export const deleteEmployee = async (req, res) => {
   try {
-    await Employee.findByIdAndDelete(req.params.id);
-    res.json({ message: "Employee deleted" });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
+    const employee = await Employee.findByIdAndDelete(req.params.id);
+
+    if (!employee) {
+      return res.status(404).json({ success: false, message: "Employee not found" });
+    }
+
+    res.json({ success: true, message: "Employee removed" });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
-};
+};
