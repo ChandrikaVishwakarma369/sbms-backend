@@ -2,9 +2,8 @@ import express from "express";
 import {
   getEmployees,
   addEmployee,
-  editEmployee,
-  removeEmployee,
-  changeStatus,
+  updateEmployee,
+  deleteEmployee,
 } from "../controllers/employeeController.js";
 import { protect } from "../middleware/authMiddleware.js"; // 🔐 Already fixed path!
 import { allowRoles } from "../middleware/roleMiddleware.js";

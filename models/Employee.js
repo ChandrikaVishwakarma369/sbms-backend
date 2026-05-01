@@ -1,9 +1,5 @@
 import mongoose from "mongoose";
 
-/**
- * EMPLOYEE MODEL
- * Defines the structure for team members with role-based access control.
- */
 const employeeSchema = new mongoose.Schema(
   {
     name: {
@@ -41,12 +37,7 @@ const employeeSchema = new mongoose.Schema(
       default: 0,
     },
   },
-  {
-    timestamps: true, // Automatically adds createdAt and updatedAt
-  }
+  { timestamps: true }
 );
-
-// Search optimization
-employeeSchema.index({ name: "text", email: "text" });
 
 export default mongoose.model("Employee", employeeSchema);

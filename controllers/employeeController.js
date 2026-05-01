@@ -1,28 +1,40 @@
-import * as employeeService from "../services/employeeService.js";
+import Employee from "../models/Employee.js";
 
-/**
- * EMPLOYEE CONTROLLER
- * Coordinates inputs from routes to the service layer. Handles HTTP responses.
- */
-
-// GET - FETCH with search, filter, and pagination
-export const getEmployees = async (req, res, next) => {
+// GET all employees
+export const getEmployees = async (req, res) => {
   try {
-    const { name, role, page, limit } = req.query;
-    const result = await employeeService.fetchEmployees({
-      name,
-      role,
-      page: parseInt(page),
-      limit: parseInt(limit),
-    });
-    res.status(200).json({ success: true, ...result });
-  } catch (error) {
-    next(error); // Error Handling Middleware
+    const employees = await Employee.find().sort({ createdAt: -1 });
+    res.json({ employees });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 };
 
-// POST - CREATE a new employee
-export const addEmployee = async (req, res, next) => {
+// ADD employee
+export const addEmployee = async (req, res) => {
+  try {
+    const { name, email, salary, status } = req.body;
+
+    if (!name || !email) {
+      return res.status(400).json({ message: "Name & Email required" });
+    }
+
+    const employee = new Employee({
+      name,
+      email,
+      salary,
+      status,
+    });
+
+    const saved = await employee.save();
+    res.status(201).json({ employee: saved });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// UPDATE employee
+export const updateEmployee = async (req, res) => {
   try {
     const newEmployee = await employeeService.createEmployeeRecord(req.body);
     res.status(201).json({ success: true, employee: newEmployee });
@@ -55,39 +67,22 @@ export const editEmployee = async (req, res, next) => {
   try {
     const updatedEmployee = await employeeService.updateEmployeeRecord(
       req.params.id,
-      req.body
+      req.body,
+      { new: true }
     );
-    if (!updatedEmployee)
-      return res.status(404).json({ success: false, message: "Not found" });
-    res.status(200).json({ success: true, employee: updatedEmployee });
-  } catch (error) {
-    next(error);
+
+    res.json({ employee: updated });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 };
 
-// DELETE - REMOVE from system
-export const removeEmployee = async (req, res, next) => {
+// DELETE employee
+export const deleteEmployee = async (req, res) => {
   try {
-    const deleted = await employeeService.deleteEmployeeRecord(req.params.id);
-    if (!deleted)
-      return res.status(404).json({ success: false, message: "Not found" });
-    res.status(200).json({ success: true, message: "Employee removed" });
-  } catch (error) {
-    next(error);
-  }
-};
-
-// PATCH - UPDATE Status only
-export const changeStatus = async (req, res, next) => {
-  try {
-    const updatedStatus = await employeeService.updateEmployeeStatusRecord(
-      req.params.id,
-      req.body.status
-    );
-    if (!updatedStatus)
-      return res.status(404).json({ success: false, message: "Not found" });
-    res.status(200).json({ success: true, employee: updatedStatus });
-  } catch (error) {
-    next(error);
+    await Employee.findByIdAndDelete(req.params.id);
+    res.json({ message: "Employee deleted" });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 };
