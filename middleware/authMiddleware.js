@@ -1,10 +1,12 @@
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 
+/**
+ * PROTECT MIDDLEWARE
+ * Verifies JWT token from cookies or Authorization header.
+ * Sets req.user for subsequent middleware/controllers.
+ */
 export const protect = async (req, res, next) => {
-  //const token = req.cookies.token;
-  const token = req.headers.authorization?.split(" ")[1];
-  // ✅ Pehle cookie check, phir Authorization header
   let token = req.cookies?.token;
 
   if (!token && req.headers.authorization?.startsWith("Bearer ")) {
@@ -17,6 +19,8 @@ export const protect = async (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    // Fetch user and exclude password
     const user = await User.findById(decoded.id).select("-password");
 
     if (!user) {
@@ -31,14 +35,18 @@ export const protect = async (req, res, next) => {
   }
 };
 
+/**
+ * ADMIN ONLY MIDDLEWARE
+ * Restricts access to users with ADMIN role.
+ */
 export const adminOnly = (req, res, next) => {
-  const role = req.user?.role?.toUpperCase();
-  if (role === "ADMIN") {
+  if (req.user && req.user.role?.toUpperCase() === "ADMIN") {
     next();
   } else {
     res.status(403).json({ success: false, message: "Access denied: Admins only" });
   }
 };
 
+// Aliases for convenience
 export const auth = protect;
-export const admin = adminOnly;
+export const admin = adminOnly;

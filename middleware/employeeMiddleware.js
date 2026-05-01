@@ -6,13 +6,13 @@
 const ALLOWED_ROLES = ["ADMIN", "EMPLOYEE"];
 
 export const validateEmployeeInput = (req, res, next) => {
-  const { name, email, role } = req.body;
+  const { name, email } = req.body;
 
   // Check required fields
-  if (!name || !email || !role) {
+  if (!name || !email) {
     return res.status(400).json({
       success: false,
-      message: "Missing required fields: name, email, and role are required.",
+      message: "Missing required fields: name and email are required.",
     });
   }
 
@@ -25,13 +25,6 @@ export const validateEmployeeInput = (req, res, next) => {
     });
   }
 
-  // Validate role
-  if (!ALLOWED_ROLES.includes(role.toUpperCase())) {
-    return res.status(400).json({
-      success: false,
-      message: `Invalid role. Allowed roles are: ${ALLOWED_ROLES.join(", ")}`,
-    });
-  }
-
   next();
 };
+
