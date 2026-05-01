@@ -23,19 +23,19 @@ export const requestLogger = (req, res, next) => {
 
 // 🔹 Order Validation
 export const validateOrderInput = (req, res, next) => {
-  const { customer, contact, product, amount, address } = req.body;
+  const { customerId, contact, productId, quantity, address } = req.body;
 
-  if (!customer || !contact || !product || !amount) {
+  if (!customerId || !contact || !productId || !quantity) {
     return res.status(400).json({
       success: false,
-      message: "Missing required fields",
+      message: "Missing required fields: customerId, contact, productId, quantity",
     });
   }
 
-  if (typeof customer !== "string" || customer.trim() === "") {
+  if (typeof customerId !== "string" || customerId.trim() === "") {
     return res.status(400).json({
       success: false,
-      message: "Invalid customer",
+      message: "Invalid customer ID",
     });
   }
 
@@ -46,10 +46,10 @@ export const validateOrderInput = (req, res, next) => {
     });
   }
 
-  if (typeof product !== "string" || product.trim() === "") {
+  if (typeof productId !== "string" || productId.trim() === "") {
     return res.status(400).json({
       success: false,
-      message: "Invalid product",
+      message: "Invalid product ID",
     });
   }
 
@@ -60,10 +60,10 @@ export const validateOrderInput = (req, res, next) => {
     });
   }
 
-  if (isNaN(amount) || Number(amount) <= 0) {
+  if (isNaN(quantity) || Number(quantity) <= 0) {
     return res.status(400).json({
       success: false,
-      message: "Amount must be positive",
+      message: "Quantity must be positive",
     });
   }
 

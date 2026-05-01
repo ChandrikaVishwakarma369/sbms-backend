@@ -8,59 +8,68 @@ const generateToken = (id) => {
   });
 };
 
-
-// 🔹 LOGIN
 export const loginUser = async (req, res) => {
-  const { email, password } = req.body;
+  try {
+    const { email, password } = req.body;
 
-  const user = await User.findOne({ email });
+    const user = await User.findOne({ email });
+    if (!user) return res.status(400).json({ success: false, message: "User not found" });
 
-  if (!user) return res.status(400).json({ msg: "User not found" });
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) return res.status(400).json({ success: false, message: "Invalid password" });
 
-  const isMatch = await bcrypt.compare(password, user.password);
+    const token = generateToken(user._id);
 
-  if (!isMatch) return res.status(400).json({ msg: "Invalid password" });
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: false,
+      sameSite: "lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
 
-  const token = generateToken(user._id);
-
-  res.cookie("token", token, {
-    httpOnly: true,
-    secure: false, // true in production
-    sameSite: "lax",
-  });
-
-  res.json({
-    message: "Login successful",
-    user: {
-      id: user._id,
-      role: user.role,
-      name: user.name,
-    },
-  });
+    res.json({
+      success: true,
+      message: "Login successful",
+      token, // ✅ token response mein bhi bhejo
+      user: {
+        id: user._id,
+        role: user.role,
+        name: user.name,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
 };
 
-
-
-// 🔹 CREATE EMPLOYEE (ONLY ADMIN)
 export const createEmployee = async (req, res) => {
-  const { name, email, password } = req.body;
+  try {
+    const { name, email, password } = req.body;
 
-  const hashedPassword = await bcrypt.hash(password, 10);
+    const existing = await User.findOne({ email });
+    if (existing) return res.status(400).json({ success: false, message: "Email already exists" });
 
-  const employee = await User.create({
-    name,
-    email,
-    password: hashedPassword,
-    role: "employee",
-  });
+    const hashedPassword = await bcrypt.hash(password, 10);
 
-  res.json(employee);
+    const employee = await User.create({
+      name,
+      email,
+      password: hashedPassword,
+      role: "employee",
+    });
+
+    res.status(201).json({ success: true, data: employee });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
 };
 
-
-
-// 🔹 LOGOUT
 export const logoutUser = (req, res) => {
-  res.clearCookie("token");
-  res.json({ message: "Logged out" });
+  res.clearCookie("token", {
+    httpOnly: true,
+    secure: false,
+    sameSite: "lax",
+    path: "/",
+  });
+  res.json({ success: true, message: "Logged out" });
 };
