@@ -1,3 +1,6 @@
+import { fileURLToPath } from 'url';
+import path from 'path';
+import fs from "fs";
 import express from "express";
 import dotenv from "dotenv";
 import connectDB from "./config/db.js";
@@ -10,9 +13,8 @@ import orderRoutes from "./routes/order.routes.js";
 import customerRoutes from "./routes/customer.route.js";
 import cookieParser from "cookie-parser";
 import cors from "cors";
-import path from "path";
-import { fileURLToPath } from "url";
-import fs from "fs";
+
+
 import {
   requestLogger,
   errorHandler
@@ -23,10 +25,6 @@ connectDB();
 
 const app = express();
 
-// Middleware
-app.use(express.json());
-app.use(cookieParser());
-app.use(requestLogger);
 
 app.use(cors({
  origin: "http://localhost:5173",
@@ -34,7 +32,6 @@ app.use(cors({
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
 }));
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -47,20 +44,23 @@ if (!fs.existsSync(uploadDir)) {
 // Static folder for images
 app.use("/uploads", express.static(uploadDir));
 
-// Routes
+app.use(express.json());
+app.use(cookieParser());
+app.use(requestLogger);
+
+
 app.use("/api/auth", authRoutes);
 app.use("/api/products", productRoutes);
-app.use("/api/invoices", invoiceRoutes);
+app.use("/api/invoices", invoiceRoutes); 
 app.use("/api/orders", orderRoutes);
 app.use("/api/employees", employeeRoutes);
-app.use("/api/upload", uploadRoutes);
-app.use("/api/customers", customerRoutes);
-// Health Check Endpoint
+
+
 app.get("/api/health", (req, res) => {
   res.status(200).json({ success: true, message: "Server is running ✅" });
 });
 
-// 404 Handler
+
 app.use((req, res) => {
   res.status(404).json({
     success: false,
@@ -69,7 +69,7 @@ app.use((req, res) => {
   });
 });
 
-// Error Handler (must be last)
+
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
