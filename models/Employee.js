@@ -22,7 +22,7 @@ const employeeSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ["ADMIN", "MANAGER", "SALES", "SUPPORT", "DEVELOPER"],
+      enum: ["ADMIN", "EMPLOYEE"],
       uppercase: true,
       required: [true, "Role is required"],
     },
@@ -35,6 +35,10 @@ const employeeSchema = new mongoose.Schema(
     avatar: {
       type: String,
       default: "https://i.pravatar.cc/150", // Default generic avatar
+    },
+    salary: {
+      type: Number,
+      default: 0,
     },
   },
   {

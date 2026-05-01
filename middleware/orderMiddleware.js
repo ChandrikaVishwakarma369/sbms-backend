@@ -72,10 +72,32 @@ export const validateOrderInput = (req, res, next) => {
 
 // 🔹 Global Error Handler
 export const errorHandler = (err, req, res, next) => {
-  console.error("❌ Error:", err.message);
+  console.error("❌ Error:", err);
 
-  res.status(err.status || 500).json({
+  let status = err.status || 500;
+  let message = err.message || "Internal Server Error";
+
+  // Mongoose validation error
+  if (err.name === "ValidationError") {
+    status = 400;
+    message = Object.values(err.errors).map((val) => val.message).join(", ");
+  }
+
+  // Mongoose duplicate key error
+  if (err.code === 11000) {
+    status = 409;
+    message = "Duplicate field value entered";
+  }
+
+  // Mongoose bad ObjectId
+  if (err.name === "CastError") {
+    status = 400;
+    message = `Resource not found with id of ${err.value}`;
+  }
+
+  res.status(status).json({
     success: false,
-    message: err.message || "Internal Server Error",
+    message: message,
+    stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
   });
 };
