@@ -3,7 +3,25 @@ import Customer from "../models/customer.model.js";
 // 📥 GET ALL CUSTOMERS
 export const getCustomers = async (req, res) => {
   try {
-    const customers = await Customer.find().sort({ createdAt: -1 });
+    const { status, gst } = req.query;
+    let query = {};
+
+    // Filter by Status
+    if (status && status !== "All") {
+      query.status = status;
+    }
+
+    // Filter by GST
+    if (gst === "true") {
+      query.gstNumber = { $ne: "", $exists: true };
+    } else if (gst === "false") {
+      query.$or = [
+        { gstNumber: "" },
+        { gstNumber: { $exists: false } }
+      ];
+    }
+
+    const customers = await Customer.find(query).sort({ createdAt: -1 });
 
     const formattedCustomers = customers.map((c) => ({
       id: c._id,
@@ -11,6 +29,7 @@ export const getCustomers = async (req, res) => {
       email: c.email,
       phone: c.phone,
       gstNumber: c.gstNumber,
+      address: c.address,
       status: c.status,
     }));
 
@@ -48,6 +67,7 @@ export const getCustomerById = async (req, res) => {
         email: customer.email,
         phone: customer.phone,
         gstNumber: customer.gstNumber,
+        address: customer.address,
         status: customer.status,
       },
     });
@@ -63,7 +83,7 @@ export const getCustomerById = async (req, res) => {
 // ➕ CREATE NEW CUSTOMER
 export const createCustomer = async (req, res) => {
   try {
-    const { name, email, phone, gstNumber } = req.body;
+    const { name, email, phone, gstNumber, address } = req.body;
 
     // Normalizing GST: Convert empty string or whitespace to undefined
     // This is the production standard for 'sparse' unique indexes in MongoDB
@@ -102,6 +122,7 @@ export const createCustomer = async (req, res) => {
       email: email.toLowerCase(),
       phone,
       gstNumber: finalGst,
+      address,
     });
 
     res.status(201).json({
@@ -113,6 +134,7 @@ export const createCustomer = async (req, res) => {
         email: customer.email,
         phone: customer.phone,
         gstNumber: customer.gstNumber,
+        address: customer.address,
         status: customer.status,
       },
     });
@@ -135,7 +157,7 @@ export const createCustomer = async (req, res) => {
 // ✏️ UPDATE CUSTOMER
 export const updateCustomer = async (req, res) => {
   try {
-    const { name, email, phone, gstNumber, status } = req.body;
+    const { name, email, phone, gstNumber, status, address } = req.body;
     const customer = await Customer.findById(req.params.id);
 
     if (!customer) {
@@ -176,6 +198,7 @@ export const updateCustomer = async (req, res) => {
     customer.phone = phone || customer.phone;
     customer.status = status || customer.status;
     customer.gstNumber = finalGst;
+    customer.address = address !== undefined ? address : customer.address;
 
     const updatedCustomer = await customer.save();
 
@@ -188,6 +211,7 @@ export const updateCustomer = async (req, res) => {
         email: updatedCustomer.email,
         phone: updatedCustomer.phone,
         gstNumber: updatedCustomer.gstNumber,
+        address: updatedCustomer.address,
         status: updatedCustomer.status,
       },
     });

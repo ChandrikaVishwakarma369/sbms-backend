@@ -2,25 +2,43 @@ import mongoose from "mongoose";
 
 const orderSchema = new mongoose.Schema(
   {
+    _id: {
+      type: String,
+      default: () => new mongoose.Types.ObjectId().toString(),
+    },
     orderId: {
       type: Number,
       unique: true,
       required: true,
     },
-    customer: {
+    customerId: {
       type: String,
+      ref: "Customer",
       required: true,
-      trim: true,
+    },
+    productId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Product",
+      required: true,
     },
     contact: {
       type: String,
       required: true,
       trim: true,
     },
-    product: {
-      type: String,
+    quantity: {
+      type: Number,
       required: true,
-      trim: true,
+      min: 1,
+      default: 1,
+    },
+    price_at_that_time: {
+      type: Number,
+      required: true,
+    },
+    GST: {
+      type: Number,
+      required: true,
     },
     date: {
       type: String,
@@ -31,7 +49,7 @@ const orderSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
-    amount: {
+    totalAmount: {
       type: Number,
       required: true,
       min: 0,

@@ -7,8 +7,12 @@ import {
   deleteCustomer,
   getCustomerStats,
 } from "../controllers/customer.controller.js";
+import { requestLogger, validateCustomerInput } from "../middleware/customerMiddleware.js";
 
 const router = express.Router();
+
+// Apply request logger to all routes
+router.use(requestLogger);
 
 // 📊 GET customer statistics
 router.get("/stats", getCustomerStats);
@@ -20,10 +24,10 @@ router.get("/", getCustomers);
 router.get("/:id", getCustomerById);
 
 // ➕ CREATE new customer
-router.post("/", createCustomer);
+router.post("/", validateCustomerInput, createCustomer);
 
 // ✏️ UPDATE customer by ID
-router.put("/:id", updateCustomer);
+router.put("/:id", validateCustomerInput, updateCustomer);
 
 // ❌ DELETE customer by ID
 router.delete("/:id", deleteCustomer);
