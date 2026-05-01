@@ -36,7 +36,36 @@ export const addEmployee = async (req, res) => {
 // UPDATE employee
 export const updateEmployee = async (req, res) => {
   try {
-    const updated = await Employee.findByIdAndUpdate(
+    const newEmployee = await employeeService.createEmployeeRecord(req.body);
+    res.status(201).json({ success: true, employee: newEmployee });
+  } catch (error) {
+    console.error("❌ Add Employee Error:", error);
+
+    // Handle MongoDB Duplicate Key Error (E11000)
+    if (error.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        message: "Email already exists. Please use a unique email.",
+      });
+    }
+
+    // Handle Mongoose Validation Error
+    if (error.name === "ValidationError") {
+      const messages = Object.values(error.errors).map((val) => val.message);
+      return res.status(400).json({
+        success: false,
+        message: messages.join(", "),
+      });
+    }
+
+    next(error);
+  }
+};
+
+// PUT - UPDATE complete details
+export const editEmployee = async (req, res, next) => {
+  try {
+    const updatedEmployee = await employeeService.updateEmployeeRecord(
       req.params.id,
       req.body,
       { new: true }

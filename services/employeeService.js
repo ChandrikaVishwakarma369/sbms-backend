@@ -24,7 +24,13 @@ export const fetchEmployees = async (queryObj) => {
 
 // CREATE new employee
 export const createEmployeeRecord = async (data) => {
-  return await Employee.create(data);
+  const employeeData = {
+    ...data,
+    role: "EMPLOYEE", // 🛡️ Security: Always default to EMPLOYEE on creation
+    status: data.status ? data.status.toUpperCase() : "ACTIVE",
+    avatar: data.avatar || "https://i.pravatar.cc/150",
+  };
+  return await Employee.create(employeeData);
 };
 
 // UPDATE employee info
