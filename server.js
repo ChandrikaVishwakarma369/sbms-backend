@@ -54,7 +54,7 @@ app.use("/api/products", productRoutes);
 app.use("/api/invoices", invoiceRoutes); 
 app.use("/api/orders", orderRoutes);
 app.use("/api/employees", employeeRoutes);
-
+app.use("/api/customers", customerRoutes);
 
 app.get("/api/health", (req, res) => {
   res.status(200).json({ success: true, message: "Server is running ✅" });
