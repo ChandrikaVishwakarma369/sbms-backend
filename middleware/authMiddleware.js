@@ -2,10 +2,7 @@ import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 
 export const protect = async (req, res, next) => {
-  //const token = req.cookies.token;
-  const token = req.headers.authorization?.split(" ")[1];
-  // ✅ Pehle cookie check, phir Authorization header
-  let token = req.cookies?.token;
+  let token = req.cookies?.token || req.headers.authorization;
 
   if (!token && req.headers.authorization?.startsWith("Bearer ")) {
     token = req.headers.authorization.split(" ")[1];
