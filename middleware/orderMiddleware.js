@@ -23,19 +23,19 @@ export const requestLogger = (req, res, next) => {
 
 // 🔹 Order Validation
 export const validateOrderInput = (req, res, next) => {
-  const { customer, contact, product, amount, address } = req.body;
+  const { customerId, contact, productId, quantity, address } = req.body;
 
-  if (!customer || !contact || !product || !amount) {
+  if (!customerId || !contact || !productId || !quantity) {
     return res.status(400).json({
       success: false,
-      message: "Missing required fields",
+      message: "Missing required fields: customerId, contact, productId, quantity",
     });
   }
 
-  if (typeof customer !== "string" || customer.trim() === "") {
+  if (typeof customerId !== "string" || customerId.trim() === "") {
     return res.status(400).json({
       success: false,
-      message: "Invalid customer",
+      message: "Invalid customer ID",
     });
   }
 
@@ -46,10 +46,10 @@ export const validateOrderInput = (req, res, next) => {
     });
   }
 
-  if (typeof product !== "string" || product.trim() === "") {
+  if (typeof productId !== "string" || productId.trim() === "") {
     return res.status(400).json({
       success: false,
-      message: "Invalid product",
+      message: "Invalid product ID",
     });
   }
 
@@ -60,10 +60,10 @@ export const validateOrderInput = (req, res, next) => {
     });
   }
 
-  if (isNaN(amount) || Number(amount) <= 0) {
+  if (isNaN(quantity) || Number(quantity) <= 0) {
     return res.status(400).json({
       success: false,
-      message: "Amount must be positive",
+      message: "Quantity must be positive",
     });
   }
 
@@ -72,10 +72,32 @@ export const validateOrderInput = (req, res, next) => {
 
 // 🔹 Global Error Handler
 export const errorHandler = (err, req, res, next) => {
-  console.error("❌ Error:", err.message);
+  console.error("❌ Error:", err);
 
-  res.status(err.status || 500).json({
+  let status = err.status || 500;
+  let message = err.message || "Internal Server Error";
+
+  // Mongoose validation error
+  if (err.name === "ValidationError") {
+    status = 400;
+    message = Object.values(err.errors).map((val) => val.message).join(", ");
+  }
+
+  // Mongoose duplicate key error
+  if (err.code === 11000) {
+    status = 409;
+    message = "Duplicate field value entered";
+  }
+
+  // Mongoose bad ObjectId
+  if (err.name === "CastError") {
+    status = 400;
+    message = `Resource not found with id of ${err.value}`;
+  }
+
+  res.status(status).json({
     success: false,
-    message: err.message || "Internal Server Error",
+    message: message,
+    stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
   });
 };

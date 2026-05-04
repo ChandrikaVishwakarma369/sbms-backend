@@ -27,8 +27,10 @@ const app = express();
 
 
 app.use(cors({
-  origin: "http://localhost:5173",
-  credentials: true
+ origin: "http://localhost:5173",
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
 }));
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -52,9 +54,7 @@ app.use("/api/products", productRoutes);
 app.use("/api/invoices", invoiceRoutes); 
 app.use("/api/orders", orderRoutes);
 app.use("/api/employees", employeeRoutes);
-app.use("/api/customer",customerRoutes)
-
-
+app.use("/api/customers", customerRoutes);
 
 app.get("/api/health", (req, res) => {
   res.status(200).json({ success: true, message: "Server is running ✅" });
