@@ -52,8 +52,7 @@ app.use("/api/products", productRoutes);
 app.use("/api/invoices", invoiceRoutes); 
 app.use("/api/orders", orderRoutes);
 app.use("/api/employees", employeeRoutes);
-app.use("/api/customer",customerRoutes)
-
+app.use("/api/customer",customerRoutes);
 
 
 app.get("/api/health", (req, res) => {
