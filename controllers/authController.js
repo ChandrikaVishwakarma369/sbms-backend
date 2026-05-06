@@ -2,12 +2,11 @@ import User from "../models/User.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
-const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, {
+const generateToken = (id, role) => {
+  return jwt.sign({ id, role }, process.env.JWT_SECRET, {
     expiresIn: "7d",
   });
 };
-
 export const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -18,7 +17,7 @@ export const loginUser = async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(400).json({ success: false, message: "Invalid password" });
 
-    const token = generateToken(user._id);
+    const token = generateToken(user._id, user.role);
 
     res.cookie("token", token, {
       httpOnly: true,
@@ -55,7 +54,7 @@ export const createEmployee = async (req, res) => {
       name,
       email,
       password: hashedPassword,
-      role: "employee",
+      role: "EMPLOYEE",
     });
 
     res.status(201).json({ success: true, data: employee });
