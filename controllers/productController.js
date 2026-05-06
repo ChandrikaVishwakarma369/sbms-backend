@@ -34,6 +34,17 @@ export const getProducts = async (req, res) => {
   }
 };
 
+// ⚠️ Get Low Stock Products
+export const getLowStockProducts = async (req, res) => {
+  try {
+    const threshold = 10;
+    const lowStockProducts = await Product.find({ stock: { $lt: threshold } }).sort({ stock: 1 });
+    res.json({ success: true, products: lowStockProducts });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 // ❌ Delete Product
 export const deleteProduct = async (req, res) => {
   try {

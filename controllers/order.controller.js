@@ -358,3 +358,70 @@ export const getOrderStats = async (req, res) => {
     });
   }
 };
+
+// 📈 GET SALES DATA (FOR CHART)
+export const getSalesData = async (req, res) => {
+  try {
+    // Calculate date for 6 months ago
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
+    sixMonthsAgo.setDate(1); // Start of the month
+    
+    const startDate = sixMonthsAgo.toISOString().split("T")[0];
+
+    const salesData = await Order.aggregate([
+      {
+        $match: {
+          date: { $gte: startDate },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            year: { $substr: ["$date", 0, 4] },
+            month: { $substr: ["$date", 5, 2] },
+          },
+          revenue: { $sum: "$totalAmount" },
+        },
+      },
+      {
+        $sort: { "_id.year": 1, "_id.month": 1 },
+      },
+    ]);
+
+    // Format for frontend
+    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    
+    // Create an array of the last 6 months to ensure we have data for all months even if 0 revenue
+    const labels = [];
+    const revenue = [];
+    
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date();
+      d.setMonth(d.getMonth() - i);
+      const monthIdx = d.getMonth();
+      const year = d.getFullYear();
+      const monthStr = (monthIdx + 1).toString().padStart(2, "0");
+      
+      const label = monthNames[monthIdx];
+      labels.push(label);
+      
+      const match = salesData.find(s => s._id.year === year.toString() && s._id.month === monthStr);
+      revenue.push(match ? match.revenue : 0);
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        labels,
+        revenue,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Error fetching sales data",
+      error: error.message,
+    });
+  }
+};

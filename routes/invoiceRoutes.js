@@ -18,6 +18,7 @@ import {
   createInvoice,
   updateInvoice,
   deleteInvoice,
+  getPendingInvoices,
 } from "../controllers/invoiceController.js";
 
 const router = express.Router();
@@ -27,6 +28,9 @@ router.use(protect);
 
 // Stats — /stats/:id 
 router.get("/stats", getInvoiceStats);
+
+// Pending Invoices for Dashboard
+router.get("/pending", getPendingInvoices);
 
 // GET all (role filter handle in controller)
 router.get("/", getAllInvoices);
