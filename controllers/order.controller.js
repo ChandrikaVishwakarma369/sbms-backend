@@ -25,7 +25,7 @@ export const getAllOrders = async (req, res) => {
       .skip(skip)
       .limit(parseInt(limit))
       .populate("customerId")
-      .populate("productId");
+      .populate("products.productId");
 
     // Format response to match frontend expectations
     const formattedOrders = orders.map((order) => ({
@@ -34,14 +34,25 @@ export const getAllOrders = async (req, res) => {
       customer: order.customerId?.name || "N/A",
       customerId: order.customerId?._id,
       contact: order.contact,
-      product: order.productId?.name || "N/A",
-      productId: order.productId?._id,
-      quantity: order.quantity,
-      price_at_that_time: order.price_at_that_time,
-      GST: order.GST,
+      products: order.products.map(item => ({
+        productId: item.productId?._id,
+        name: item.productId?.name || "N/A",
+        quantity: item.quantity,
+        price: item.price_at_that_time,
+        gst: item.GST
+      })),
+      // For backward compatibility or simpler display in table:
+      product: order.products.length > 0 
+        ? order.products.length === 1 
+          ? order.products[0].productId?.name || "N/A"
+          : order.products.length === 2
+            ? `${order.products[0].productId?.name || "N/A"}, ${order.products[1].productId?.name || "N/A"}`
+            : `${order.products[0].productId?.name || "N/A"} + ${order.products.length - 1} more`
+        : "N/A",
+      quantity: order.products.reduce((sum, item) => sum + item.quantity, 0),
       date: order.date,
       address: order.address,
-      amount: order.totalAmount, // Map totalAmount to amount for frontend compatibility
+      amount: order.totalAmount,
       status: order.status,
     }));
 
@@ -71,10 +82,10 @@ export const getOrderById = async (req, res) => {
     // Check if id is a valid MongoDB ObjectId or orderId
     if (id.length === 24 && /^[0-9a-f]{24}$/i.test(id)) {
       // It's a MongoDB ObjectId
-      order = await Order.findById(id).populate("customerId").populate("productId");
+      order = await Order.findById(id).populate("customerId").populate("products.productId");
     } else {
       // Try to find by orderId (treating it as a number)
-      order = await Order.findOne({ orderId: parseInt(id) }).populate("customerId").populate("productId");
+      order = await Order.findOne({ orderId: parseInt(id) }).populate("customerId").populate("products.productId");
     }
 
     if (!order) {
@@ -92,11 +103,13 @@ export const getOrderById = async (req, res) => {
         customer: order.customerId?.name || "N/A",
         customerId: order.customerId?._id,
         contact: order.contact,
-        product: order.productId?.name || "N/A",
-        productId: order.productId?._id,
-        quantity: order.quantity,
-        price_at_that_time: order.price_at_that_time,
-        GST: order.GST,
+        products: order.products.map(item => ({
+          productId: item.productId?._id,
+          name: item.productId?.name || "N/A",
+          quantity: item.quantity,
+          price: item.price_at_that_time,
+          gst: item.GST
+        })),
         date: order.date,
         address: order.address,
         amount: order.totalAmount,
@@ -115,37 +128,17 @@ export const getOrderById = async (req, res) => {
 // ➕ CREATE NEW ORDER
 export const createOrder = async (req, res) => {
   try {
-    const { customerId, contact, productId, quantity, date, address, status } = req.body;
+    const { customerId, contact, products, date, address, status } = req.body;
 
     // 1. Validate required fields
-    if (!customerId || !contact || !productId || !quantity || !address) {
+    if (!customerId || !contact || !products || !products.length || !address) {
       return res.status(400).json({
         success: false,
-        message: "Missing required fields: customerId, contact, productId, quantity, and address are all required.",
+        message: "Missing required fields: customerId, contact, products, and address are all required.",
       });
     }
 
-    const numQuantity = parseInt(quantity);
-    if (isNaN(numQuantity) || numQuantity <= 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Quantity must be a valid number greater than 0",
-      });
-    }
-
-    // 2. Fetch Product Details (Safe check for ID format)
-    let product;
-    try {
-      product = await Product.findById(productId);
-    } catch (err) {
-      return res.status(400).json({ success: false, message: "Invalid Product ID format" });
-    }
-
-    if (!product) {
-      return res.status(404).json({ success: false, message: "Product not found" });
-    }
-
-    // 3. Fetch Customer Details (Safe check for ID format)
+    // 2. Fetch Customer Details (Safe check for ID format)
     let customer;
     try {
       customer = await Customer.findById(customerId);
@@ -157,28 +150,50 @@ export const createOrder = async (req, res) => {
       return res.status(404).json({ success: false, message: "Customer not found" });
     }
 
-    // 4. Calculate GST Rate
-    const gstRate = customer.gstNumber ? (product.gst || 0) : 0;
-    
-    // 5. Calculations
-    const price_at_that_time = product.price;
-    const subtotal = price_at_that_time * numQuantity;
-    const gstAmount = subtotal * (gstRate / 100);
-    const totalAmount = subtotal + gstAmount;
+    // 3. Process Products and Calculate Totals
+    let totalAmount = 0;
+    const processedProducts = [];
 
-    // 6. Generate unique orderId
+    for (const item of products) {
+      const { productId, quantity } = item;
+      
+      const product = await Product.findById(productId);
+      if (!product) {
+        return res.status(404).json({ success: false, message: `Product with ID ${productId} not found` });
+      }
+
+      const numQuantity = parseInt(quantity);
+      if (isNaN(numQuantity) || numQuantity <= 0) {
+        return res.status(400).json({ success: false, message: `Invalid quantity for product ${product.name}` });
+      }
+
+      // Calculate GST for this item
+      const gstRate = customer.gstNumber ? (product.gst || 0) : 0;
+      const price_at_that_time = product.price;
+      const subtotal = price_at_that_time * numQuantity;
+      const gstAmount = subtotal * (gstRate / 100);
+      const itemTotal = subtotal + gstAmount;
+
+      totalAmount += itemTotal;
+
+      processedProducts.push({
+        productId,
+        quantity: numQuantity,
+        price_at_that_time,
+        GST: gstRate
+      });
+    }
+
+    // 4. Generate unique orderId
     const lastOrder = await Order.findOne().sort({ orderId: -1 });
     const orderId = lastOrder ? lastOrder.orderId + 1 : 1001;
 
-    // 7. Create and Save
+    // 5. Create and Save
     const newOrder = new Order({
       orderId,
       customerId,
       contact,
-      productId,
-      quantity: numQuantity,
-      price_at_that_time,
-      GST: gstRate,
+      products: processedProducts,
       date: date || new Date().toISOString().split("T")[0],
       address,
       totalAmount,
@@ -190,7 +205,7 @@ export const createOrder = async (req, res) => {
     // Populate for response
     const populatedOrder = await Order.findById(newOrder._id)
       .populate("customerId")
-      .populate("productId");
+      .populate("products.productId");
 
     res.status(201).json({
       success: true,
@@ -201,11 +216,13 @@ export const createOrder = async (req, res) => {
         customer: populatedOrder.customerId?.name || "N/A",
         customerId: populatedOrder.customerId?._id,
         contact: populatedOrder.contact,
-        product: populatedOrder.productId?.name || "N/A",
-        productId: populatedOrder.productId?._id,
-        quantity: populatedOrder.quantity,
-        price_at_that_time: populatedOrder.price_at_that_time,
-        GST: populatedOrder.GST,
+        products: populatedOrder.products.map(item => ({
+          productId: item.productId?._id,
+          name: item.productId?.name || "N/A",
+          quantity: item.quantity,
+          price: item.price_at_that_time,
+          gst: item.GST
+        })),
         date: populatedOrder.date,
         address: populatedOrder.address,
         amount: populatedOrder.totalAmount,
@@ -225,7 +242,7 @@ export const createOrder = async (req, res) => {
 export const updateOrder = async (req, res) => {
   try {
     const { id } = req.params;
-    const { customerId, contact, productId, quantity, date, address, status } = req.body;
+    const { customerId, contact, products, date, address, status } = req.body;
 
     let order = await Order.findById(id.length === 24 ? id : null) || await Order.findOne({ orderId: parseInt(id) });
 
@@ -233,36 +250,57 @@ export const updateOrder = async (req, res) => {
       return res.status(404).json({ success: false, message: "Order not found" });
     }
 
-    // Update fields if provided
+    // Update basic fields
     if (customerId) order.customerId = customerId;
     if (contact) order.contact = contact;
-    if (productId) order.productId = productId;
-    if (quantity) order.quantity = quantity;
     if (date) order.date = date;
     if (address) order.address = address;
     if (status) order.status = status;
 
-    // Recalculate if critical fields changed
-    if (customerId || productId || quantity) {
-      const product = await Product.findById(order.productId);
+    // Update products and recalculate if provided
+    if (products && products.length > 0) {
       const customer = await Customer.findById(order.customerId);
-
-      if (product && customer) {
-        order.price_at_that_time = product.price;
-        const gstRate = customer.gstNumber ? (product.gst || 0) : 0;
-        order.GST = gstRate;
-        
-        const subtotal = order.price_at_that_time * order.quantity;
-        const gstAmount = subtotal * (gstRate / 100);
-        order.totalAmount = subtotal + gstAmount;
+      if (!customer) {
+        return res.status(404).json({ success: false, message: "Customer not found" });
       }
+
+      let totalAmount = 0;
+      const processedProducts = [];
+
+      for (const item of products) {
+        const { productId, quantity } = item;
+        const product = await Product.findById(productId);
+        
+        if (!product) {
+          return res.status(404).json({ success: false, message: `Product with ID ${productId} not found` });
+        }
+
+        const numQuantity = parseInt(quantity);
+        const gstRate = customer.gstNumber ? (product.gst || 0) : 0;
+        const price_at_that_time = product.price;
+        const subtotal = price_at_that_time * numQuantity;
+        const gstAmount = subtotal * (gstRate / 100);
+        const itemTotal = subtotal + gstAmount;
+
+        totalAmount += itemTotal;
+
+        processedProducts.push({
+          productId,
+          quantity: numQuantity,
+          price_at_that_time,
+          GST: gstRate
+        });
+      }
+
+      order.products = processedProducts;
+      order.totalAmount = totalAmount;
     }
 
     await order.save();
 
     const populatedOrder = await Order.findById(order._id)
       .populate("customerId")
-      .populate("productId");
+      .populate("products.productId");
 
     res.status(200).json({
       success: true,
@@ -273,11 +311,13 @@ export const updateOrder = async (req, res) => {
         customer: populatedOrder.customerId?.name || "N/A",
         customerId: populatedOrder.customerId?._id,
         contact: populatedOrder.contact,
-        product: populatedOrder.productId?.name || "N/A",
-        productId: populatedOrder.productId?._id,
-        quantity: populatedOrder.quantity,
-        price_at_that_time: populatedOrder.price_at_that_time,
-        GST: populatedOrder.GST,
+        products: populatedOrder.products.map(item => ({
+          productId: item.productId?._id,
+          name: item.productId?.name || "N/A",
+          quantity: item.quantity,
+          price: item.price_at_that_time,
+          gst: item.GST
+        })),
         date: populatedOrder.date,
         address: populatedOrder.address,
         amount: populatedOrder.totalAmount,

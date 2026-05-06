@@ -1,12 +1,14 @@
 import Order from "../models/order.model.js";
 import Product from "../models/Product.js";
 import Customer from "../models/customer.model.js";
+import Employee from "../models/Employee.js";
 
 export const getDashboardStats = async (req, res) => {
   try {
     const totalCustomers = await Customer.countDocuments();
     const totalOrders = await Order.countDocuments();
     const totalProducts = await Product.countDocuments();
+    const totalEmployees = await Employee.countDocuments();
 
     const revenueResult = await Order.aggregate([
       {
@@ -26,6 +28,7 @@ export const getDashboardStats = async (req, res) => {
         totalOrders,
         totalProducts,
         totalRevenue,
+        totalEmployees,
       },
     });
   } catch (error) {
