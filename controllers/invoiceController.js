@@ -300,3 +300,44 @@ export const deleteInvoice = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+// ─── GET PENDING INVOICES ──────────────────────────────────────────────────────
+export const getPendingInvoices = async (req, res) => {
+  try {
+    const baseFilter = buildFilter(req.user);
+    await syncOverdueStatuses(baseFilter);
+
+    // Fetch both PENDING and OVERDUE as they are both "pending payments"
+    const pendingFilter = {
+      ...baseFilter,
+      status: { $in: ["PENDING", "OVERDUE"] }
+    };
+
+    const invoices = await Invoice.find(pendingFilter)
+      .sort({ dueDate: 1 })
+      .limit(10); // Limit to top 10 for dashboard widget
+
+    const totalPending = invoices.reduce((sum, inv) => sum + inv.total, 0);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        totalPending,
+        count: invoices.length,
+        invoices: invoices.map(inv => ({
+          id: inv._id,
+          customer: inv.customerName,
+          amount: inv.total,
+          dueDate: inv.dueDate ? new Date(inv.dueDate).toLocaleDateString("en-GB", {
+            day: "numeric",
+            month: "short",
+            year: "numeric"
+          }) : "N/A"
+        }))
+      },
+    });
+  } catch (error) {
+    console.error("PENDING ERROR:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
