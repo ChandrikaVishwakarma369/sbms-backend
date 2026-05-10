@@ -16,29 +16,33 @@ const orderSchema = new mongoose.Schema(
       ref: "Customer",
       required: true,
     },
-    productId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Product",
-      required: true,
-    },
+    products: [
+      {
+        productId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Product",
+          required: true,
+        },
+        quantity: {
+          type: Number,
+          required: true,
+          min: 1,
+          default: 1,
+        },
+        price_at_that_time: {
+          type: Number,
+          required: true,
+        },
+        GST: {
+          type: Number,
+          required: true,
+        },
+      },
+    ],
     contact: {
       type: String,
       required: true,
       trim: true,
-    },
-    quantity: {
-      type: Number,
-      required: true,
-      min: 1,
-      default: 1,
-    },
-    price_at_that_time: {
-      type: Number,
-      required: true,
-    },
-    GST: {
-      type: Number,
-      required: true,
     },
     date: {
       type: String,

@@ -23,12 +23,12 @@ export const requestLogger = (req, res, next) => {
 
 // 🔹 Order Validation
 export const validateOrderInput = (req, res, next) => {
-  const { customerId, contact, productId, quantity, address } = req.body;
+  const { customerId, contact, products, address } = req.body;
 
-  if (!customerId || !contact || !productId || !quantity) {
+  if (!customerId || !contact || !products || !products.length || !address) {
     return res.status(400).json({
       success: false,
-      message: "Missing required fields: customerId, contact, productId, quantity",
+      message: "Missing required fields: customerId, contact, products, and address are required.",
     });
   }
 
@@ -46,25 +46,34 @@ export const validateOrderInput = (req, res, next) => {
     });
   }
 
-  if (typeof productId !== "string" || productId.trim() === "") {
-    return res.status(400).json({
-      success: false,
-      message: "Invalid product ID",
-    });
-  }
-
-  if (address && (typeof address !== "string" || address.trim() === "")) {
+  if (typeof address !== "string" || address.trim() === "") {
     return res.status(400).json({
       success: false,
       message: "Invalid address",
     });
   }
 
-  if (isNaN(quantity) || Number(quantity) <= 0) {
+  if (!Array.isArray(products)) {
     return res.status(400).json({
       success: false,
-      message: "Quantity must be positive",
+      message: "Products must be an array",
     });
+  }
+
+  for (const item of products) {
+    if (!item.productId || typeof item.productId !== "string" || item.productId.trim() === "") {
+      return res.status(400).json({
+        success: false,
+        message: "Each product must have a valid product ID",
+      });
+    }
+
+    if (isNaN(item.quantity) || Number(item.quantity) <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Quantity for each product must be positive",
+      });
+    }
   }
 
   next();

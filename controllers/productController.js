@@ -13,7 +13,8 @@ export const addProduct = async (req, res) => {
       image,
       category,
       stock,
-      gst
+      gst,
+      status: req.body.status || "Active"
     });
 
     await product.save();
@@ -27,8 +28,19 @@ export const addProduct = async (req, res) => {
 // 📦 Get All Products
 export const getProducts = async (req, res) => {
   try {
-    const products = await Product.find();
+    const products = await Product.find().sort({ createdAt: -1 });
     res.json({ success: true, products });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ⚠️ Get Low Stock Products
+export const getLowStockProducts = async (req, res) => {
+  try {
+    const threshold = 10;
+    const lowStockProducts = await Product.find({ stock: { $lt: threshold } }).sort({ stock: 1 });
+    res.json({ success: true, products: lowStockProducts });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

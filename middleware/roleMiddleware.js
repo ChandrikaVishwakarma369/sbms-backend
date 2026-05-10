@@ -32,15 +32,22 @@ export const canDelete = (req, res, next) => {
 // Generic role-based access control factory
 export const allowRoles = (...allowedRoles) => {
   return (req, res, next) => {
-    const userRole = req.user?.role?.toUpperCase();
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: "Not authorized: No user found in request",
+      });
+    }
+
+    const userRole = req.user.role?.toUpperCase();
     const normalizedAllowedRoles = allowedRoles.map((role) => role.toUpperCase());
 
-    if (req.user && normalizedAllowedRoles.includes(userRole)) {
+    if (normalizedAllowedRoles.includes(userRole)) {
       return next();
     }
 
     const message = normalizedAllowedRoles.length === 1 && normalizedAllowedRoles[0] === "ADMIN"
-      ? "Access denied. Admin only."
+      ? "Access denied: Administrative privileges required."
       : `Access denied. Authorized roles: ${allowedRoles.join(", ")}`;
 
     return res.status(403).json({

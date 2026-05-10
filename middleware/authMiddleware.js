@@ -7,14 +7,19 @@ import User from "../models/User.js";
  * Sets req.user for subsequent middleware/controllers.
  */
 export const protect = async (req, res, next) => {
-  let token = req.cookies?.token;
+  let token;
 
-  if (!token && req.headers.authorization?.startsWith("Bearer ")) {
+  // 1. Check Authorization Header (Prioritized)
+  if (req.headers.authorization && req.headers.authorization.startsWith("Bearer ")) {
     token = req.headers.authorization.split(" ")[1];
+  } 
+  // 2. Fallback to Cookies
+  else if (req.cookies?.token) {
+    token = req.cookies.token;
   }
 
   if (!token) {
-    return res.status(401).json({ success: false, message: "Not authorized, no token" });
+    return res.status(401).json({ success: false, message: "Not authorized: No token provided" });
   }
 
   try {
@@ -24,14 +29,16 @@ export const protect = async (req, res, next) => {
     const user = await User.findById(decoded.id).select("-password");
 
     if (!user) {
-      return res.status(401).json({ success: false, message: "User not found" });
+      return res.status(401).json({ success: false, message: "Not authorized: User no longer exists" });
     }
 
+    // Attach user to request
     req.user = user;
     next();
   } catch (error) {
-    console.error("Auth error:", error.message);
-    res.status(401).json({ success: false, message: "Token validation failed" });
+    console.error("Auth Middleware Error:", error.message);
+    const message = error.name === "TokenExpiredError" ? "Session expired, please login again" : "Invalid token";
+    res.status(401).json({ success: false, message });
   }
 };
 

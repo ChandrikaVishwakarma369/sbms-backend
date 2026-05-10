@@ -11,7 +11,7 @@ import employeeRoutes from "./routes/employeeRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
 import orderRoutes from "./routes/order.routes.js";
 import customerRoutes from "./routes/customer.route.js";
-import settingsRouter from "./routes/settingsRoutes.js";
+import dashboardRoutes from "./routes/dashboard.routes.js";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 
@@ -56,7 +56,7 @@ app.use("/api/invoices", invoiceRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/employees", employeeRoutes);
 app.use("/api/customers", customerRoutes);
-app.use("/api/settings", settingsRouter);
+app.use("/api/dashboard", dashboardRoutes);
 
 app.get("/api/health", (req, res) => {
   res.status(200).json({ success: true, message: "Server is running ✅" });
