@@ -5,7 +5,7 @@ import {
   updateEmployee,
   deleteEmployee,
 } from "../controllers/employeeController.js";
-import { protect } from "../middleware/authMiddleware.js"; // 🔐 Already fixed path!
+import { auth } from "../middleware/authMiddleware.js"; // 🔐 Already fixed path!
 import { allowRoles } from "../middleware/roleMiddleware.js";
 import { validateEmployeeInput } from "../middleware/employeeMiddleware.js";
 
@@ -17,9 +17,9 @@ const router = express.Router();
  */
 
 // Routes
-router.get("/", protect, getEmployees);
-router.post("/", protect, allowRoles("ADMIN"), validateEmployeeInput, addEmployee);
-router.put("/:id", protect, allowRoles("ADMIN"), updateEmployee);
-router.delete("/:id", protect, allowRoles("ADMIN"), deleteEmployee);
+router.get("/", auth, getEmployees);
+router.post("/", auth, allowRoles("ADMIN"), validateEmployeeInput, addEmployee);
+router.put("/:id", auth, allowRoles("ADMIN"), updateEmployee);
+router.delete("/:id", auth, allowRoles("ADMIN"), deleteEmployee);
 
-export default router;
+export default router;

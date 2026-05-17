@@ -1,14 +1,14 @@
 import express from "express";
 
 //  existing auth middleware — JWT verify + req.user sets 
-import { protect } from "../middleware/authMiddleware.js";
+import { auth } from "../middleware/authMiddleware.js";
 
 // Invoice specific middlewares
 import {
   validateInvoiceBody,
   canEditInvoice,
 } from "../middleware/invoiceMiddleware.js";
-import { adminOnly } from "../middleware/authMiddleware.js";
+import { admin } from "../middleware/authMiddleware.js";
 
 // Controllers
 import {
@@ -24,7 +24,7 @@ import {
 const router = express.Router();
 
 // protect → JWT check for all routes
-router.use(protect);
+router.use(auth);
 
 // Stats — /stats/:id 
 router.get("/stats", getInvoiceStats);
@@ -45,6 +45,6 @@ router.post("/", validateInvoiceBody, createInvoice);
 router.put("/:id", canEditInvoice, validateInvoiceBody, updateInvoice);
 
 // DELETE — adminOnly
-router.delete("/:id", adminOnly, deleteInvoice);
+router.delete("/:id", admin, deleteInvoice);
 
 export default router;
