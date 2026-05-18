@@ -1,59 +1,76 @@
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 
-/**
- * PROTECT MIDDLEWARE
- * Verifies JWT token from cookies or Authorization header.
- * Sets req.user for subsequent middleware/controllers.
- */
-export const protect = async (req, res, next) => {
-  let token;
-
-  // 1. Check Authorization Header (Prioritized)
-  if (req.headers.authorization && req.headers.authorization.startsWith("Bearer ")) {
-    token = req.headers.authorization.split(" ")[1];
-  } 
-  // 2. Fallback to Cookies
-  else if (req.cookies?.token) {
-    token = req.cookies.token;
-  }
-
-  if (!token) {
-    return res.status(401).json({ success: false, message: "Not authorized: No token provided" });
-  }
-
+export const auth = async (req, res, next) => {
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    
-    // Fetch user and exclude password
+
+    console.log("Cookies =>", req.cookies);
+
+    let token = req.cookies.token;
+
+    // Agar cookie me token nahi mila
+    // to Authorization header check karo
+
+    if (!token && req.headers.authorization) {
+
+      token = req.headers.authorization.split(" ")[1];
+    }
+
+    // Token missing
+
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        message: "No token provided",
+      });
+    }
+
+    // Verify token
+
+    const decoded = jwt.verify(
+      token,
+      process.env.JWT_SECRET
+    );
+
+    // User fetch
+
     const user = await User.findById(decoded.id).select("-password");
 
     if (!user) {
-      return res.status(401).json({ success: false, message: "Not authorized: User no longer exists" });
+      return res.status(401).json({
+        success: false,
+        message: "User not found",
+      });
     }
 
-    // Attach user to request
+    // IMPORTANT
+
     req.user = user;
+    req.userId = user._id;
+
     next();
+
   } catch (error) {
-    console.error("Auth Middleware Error:", error.message);
-    const message = error.name === "TokenExpiredError" ? "Session expired, please login again" : "Invalid token";
-    res.status(401).json({ success: false, message });
+
+    console.log("AUTH ERROR:", error.message);
+
+    res.status(401).json({
+      success: false,
+      message: "Unauthorized",
+    });
   }
 };
 
-/**
- * ADMIN ONLY MIDDLEWARE
- * Restricts access to users with ADMIN role.
- */
-export const adminOnly = (req, res, next) => {
-  if (req.user && req.user.role?.toUpperCase() === "ADMIN") {
-    next();
-  } else {
-    res.status(403).json({ success: false, message: "Access denied: Admins only" });
-  }
-};
+// ADMIN CHECK
 
-// Aliases for convenience
-export const auth = protect;
-export const admin = adminOnly;
+export const admin = (req, res, next) => {
+
+  if (req.user.role !== "admin") {
+    return res.status(403).json({
+      success: false,
+      message: "Admin access only",
+    });
+  }
+
+  next();
+};
