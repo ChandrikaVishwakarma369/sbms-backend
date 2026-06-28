@@ -15,17 +15,14 @@ import settingsRouter from "./routes/settingsRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import cookieParser from "cookie-parser";
 import cors from "cors";
-
-
 import {
   requestLogger,
   errorHandler
 } from "./middleware/orderMiddleware.js";
-
 dotenv.config();
 connectDB();
-
 const app = express();
+
 app.use(cors({
   origin: [
     "http://localhost:5173",
