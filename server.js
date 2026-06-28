@@ -26,14 +26,12 @@ dotenv.config();
 connectDB();
 
 const app = express();
-
-
 app.use(cors({
   origin: [
     "http://localhost:5173",
     "https://sbms-gold.vercel.app",
     "https://www.sbms-gold.vercel.app"
-  ],
+  ], 
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
