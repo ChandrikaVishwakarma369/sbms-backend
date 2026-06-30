@@ -3,7 +3,7 @@ import Invoice from "../models/Invoice.js";
 // ─── COMMON FILTER ────────────────────────────────────────────────────────────
 const buildFilter = (user, extra = {}) => {
   const filter = { ...extra };
-  if (user.role !== "admin") {
+  if (user.role?.toUpperCase() !== "ADMIN") {
     filter.createdBy = user._id;
   }
   return filter;
