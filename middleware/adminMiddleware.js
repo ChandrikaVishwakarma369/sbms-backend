@@ -3,7 +3,7 @@ export const admin = (req, res, next) => {
     return res.status(401).json({ msg: "User not authenticated" });
   }
 
-  if (req.user.role?.toUpperCase() !== "ADMIN") {
+  if (req.user.role !== "admin") {
     return res.status(403).json({ msg: "Admin access required" });
   }
 
