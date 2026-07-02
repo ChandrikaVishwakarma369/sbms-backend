@@ -5,6 +5,7 @@ import express from "express";
 import dotenv from "dotenv";
 import connectDB from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
+import dashboardRoutes from "./routes/dashboard.routes.js";
 import productRoutes from "./routes/productRoutes.js";
 import invoiceRoutes from './routes/invoiceRoutes.js';
 import employeeRoutes from "./routes/employeeRoutes.js";
@@ -52,6 +53,7 @@ app.use(requestLogger);
 
 
 app.use("/api/auth", authRoutes);
+app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/invoices", invoiceRoutes); 
 app.use("/api/orders", orderRoutes);
