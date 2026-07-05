@@ -9,10 +9,14 @@ import {
   getSalesData,
 } from "../controllers/order.controller.js";
 
-import { auth, admin} from "../middleware/authMiddleware.js";
+import { auth } from "../middleware/authMiddleware.js";
+import { allowRoles } from "../middleware/roleMiddleware.js";
 import { validateOrderInput } from "../middleware/orderMiddleware.js";
 
 const router = express.Router();
+
+// Protect all routes
+router.use(auth);
 
 // 📊 GET order statistics
 router.get("/stats", getOrderStats);
@@ -32,7 +36,7 @@ router.post("/", validateOrderInput, createOrder);
 // ✏️ UPDATE order by ID (with validation)
 router.put("/:id", validateOrderInput, updateOrder);
 
-// ❌ DELETE order by ID
-router.delete("/:id", deleteOrder);
+// ❌ DELETE order by ID — Admin only
+router.delete("/:id", allowRoles("ADMIN"), deleteOrder);
 
 export default router;

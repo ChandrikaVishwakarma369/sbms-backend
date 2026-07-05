@@ -123,6 +123,7 @@ export const createCustomer = async (req, res) => {
       phone,
       gstNumber: finalGst,
       address,
+      createdBy: req.userId,
     });
 
     res.status(201).json({
