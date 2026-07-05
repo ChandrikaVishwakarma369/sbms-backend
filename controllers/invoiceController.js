@@ -195,7 +195,7 @@ export const createInvoice = async (req, res) => {
       status: status.toUpperCase(),
       paymentMethod: paymentMethod || null,
       notes: notes || null,
-      createdBy: req.user._id,
+      createdBy: req.userId,
     });
 
     res.status(201).json({
