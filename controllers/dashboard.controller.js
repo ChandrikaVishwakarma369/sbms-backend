@@ -28,7 +28,7 @@ export const getDashboardStats = async (req, res) => {
 
     const totalRevenue = revenueResult.length > 0 ? revenueResult[0].totalRevenue : 0;
 
-    const totalInvoices = await Invoice.countDocuments(isAdmin ? {} : { createdBy: req.userId });
+    const totalInvoices = await Invoice.countDocuments(isAdmin ? {} : { createdBy: req.user._id });
 
     const responseData = {
       totalCustomers,
