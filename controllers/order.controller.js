@@ -13,6 +13,11 @@ export const getAllOrders = async (req, res) => {
       query.status = status;
     }
 
+    // Non-admin users see only their own orders
+    if (req.user?.role?.toUpperCase() !== "ADMIN") {
+      query.createdBy = req.userId;
+    }
+
     // Calculate pagination values
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
@@ -93,6 +98,11 @@ export const getOrderById = async (req, res) => {
         success: false,
         message: "Order not found",
       });
+    }
+
+    // Non-admin users can only view their own orders
+    if (req.user?.role?.toUpperCase() !== "ADMIN" && order.createdBy?.toString() !== req.userId?.toString()) {
+      return res.status(403).json({ success: false, message: "Access denied" });
     }
 
     res.status(200).json({
@@ -198,6 +208,7 @@ export const createOrder = async (req, res) => {
       address,
       totalAmount,
       status: status || "Pending",
+      createdBy: req.userId,
     });
 
     await newOrder.save();
@@ -248,6 +259,11 @@ export const updateOrder = async (req, res) => {
 
     if (!order) {
       return res.status(404).json({ success: false, message: "Order not found" });
+    }
+
+    // Non-admin users can only edit their own orders
+    if (req.user?.role?.toUpperCase() !== "ADMIN" && order.createdBy?.toString() !== req.userId?.toString()) {
+      return res.status(403).json({ success: false, message: "Access denied: You can only edit your own orders" });
     }
 
     // Update basic fields
@@ -374,11 +390,16 @@ export const deleteOrder = async (req, res) => {
 // 📊 GET ORDER STATISTICS
 export const getOrderStats = async (req, res) => {
   try {
-    const totalOrders = await Order.countDocuments();
-    const shippedOrders = await Order.countDocuments({ status: "Shipped" });
-    const pendingOrders = await Order.countDocuments({ status: "Pending" });
-    const deliveredOrders = await Order.countDocuments({ status: "Delivered" });
-    const cancelledOrders = await Order.countDocuments({ status: "Cancelled" });
+    const filter = {};
+    if (req.user?.role?.toUpperCase() !== "ADMIN") {
+      filter.createdBy = req.userId;
+    }
+
+    const totalOrders = await Order.countDocuments(filter);
+    const shippedOrders = await Order.countDocuments({ ...filter, status: "Shipped" });
+    const pendingOrders = await Order.countDocuments({ ...filter, status: "Pending" });
+    const deliveredOrders = await Order.countDocuments({ ...filter, status: "Delivered" });
+    const cancelledOrders = await Order.countDocuments({ ...filter, status: "Cancelled" });
 
     res.status(200).json({
       success: true,
@@ -409,11 +430,18 @@ export const getSalesData = async (req, res) => {
     
     const startDate = sixMonthsAgo.toISOString().split("T")[0];
 
+    const matchQuery = {
+      date: { $gte: startDate },
+    };
+
+    // Non-admin users see only their own sales data
+    if (req.user?.role?.toUpperCase() !== "ADMIN") {
+      matchQuery.createdBy = req.user._id;
+    }
+
     const salesData = await Order.aggregate([
       {
-        $match: {
-          date: { $gte: startDate },
-        },
+        $match: matchQuery,
       },
       {
         $group: {

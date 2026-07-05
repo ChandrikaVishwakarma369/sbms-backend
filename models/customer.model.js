@@ -40,6 +40,10 @@ const customerSchema = new mongoose.Schema(
       enum: ["Active", "Inactive"],
       default: "Active",
     },
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
   },
   { timestamps: true }
 );

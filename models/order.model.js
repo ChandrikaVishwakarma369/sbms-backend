@@ -63,6 +63,10 @@ const orderSchema = new mongoose.Schema(
       enum: ["Pending", "Shipped", "Delivered", "Cancelled"],
       default: "Pending",
     },
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
   },
   { timestamps: true }
 );
