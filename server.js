@@ -20,7 +20,9 @@ import {
   requestLogger,
   errorHandler
 } from "./middleware/orderMiddleware.js";
-dotenv.config();
+if (process.env.NODE_ENV !== "production") {
+  dotenv.config();
+}
 connectDB();
 const app = express();
 
